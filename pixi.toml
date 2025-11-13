@@ -1,16 +1,22 @@
 [workspace]
-authors = ["mdecarabas <codrea.eric@gmail.com>"]
 channels = ["conda-forge"]
-name = "tomo_bait"
 platforms = ["osx-arm64"]
-version = "0.1.0"
 
 [tasks]
+lint = "ruff check ."
+format = "ruff format ."
 
 [dependencies]
 numpy = ">=2.3.4,<3"
-python = ">=3.14"
+python = ">=3.12"
 google-genai = ">=1.49.0,<2"
+gitpython = ">=3.1.45,<4"
+sphinx = ">=8.2.3,<9"
+sphinx_rtd_theme = ">=3.0.2,<4"
+sphinxcontrib-bibtex = ">=2.6.5,<3"
+nbsphinx = ">=0.9.7,<0.10"
+pybtex = ">=0.25.1,<0.26"
+ruff = ">=0.4.4,<0.5"
 
 [pypi-dependencies]
-ag2 = { version = "*", extras = ["gemini"] }
+ag2 = { version = "*", extras = ["gemini", "mcp"] }
