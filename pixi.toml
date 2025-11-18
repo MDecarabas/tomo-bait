@@ -3,6 +3,9 @@ channels = ["conda-forge"]
 platforms = ["osx-arm64"]
 
 [tasks]
+install = "pip install -e ."
+start-frontend = "PYTHONPATH=src uvicorn tomobait.frontend:app --reload --port 8000"
+run-cli = "PYTHONPATH=src python src/tomobait/cli.py"
 lint = "ruff check ."
 format = "ruff format ."
 ingest = "python src/data_ingestion.py"

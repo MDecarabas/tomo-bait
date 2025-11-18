@@ -2,7 +2,7 @@ import os
 import autogen
 from autogen import LLMConfig
 from typing import Annotated
-from retriever import get_documentation_retriever
+from .retriever import get_documentation_retriever
 from dotenv import load_dotenv
 
 # --- FIX 1: Remove the Google-specific type imports ---
