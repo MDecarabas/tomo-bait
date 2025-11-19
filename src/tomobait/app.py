@@ -178,16 +178,46 @@ def query_documentation(
 ) -> str:
     """
     A tool that takes a user's query, retrieves relevant
-    document chunks, and returns them as a single string.
+    document chunks, and returns them as a single string with source links.
     """
     print(f"\n--- TOOL: Querying for '{query}' ---")
-    
+
     results = retriever.invoke(query)
-    
-    context_str = "\n\n---\n\n".join(
-        [doc.page_content for doc in results]
-    )
-    
+
+    # Format each chunk with its metadata (including source URLs)
+    formatted_chunks = []
+    for doc in results:
+        chunk = doc.page_content
+
+        # Collect source information and URLs from metadata
+        sources = []
+
+        # Add file source if available
+        if 'source' in doc.metadata:
+            source_path = doc.metadata['source']
+            # Only show source path for non-config resources
+            if 'config_resources' not in str(source_path):
+                sources.append(f"Source: {source_path}")
+
+        # Add relevant URLs from metadata (prioritize web-accessible links)
+        url_fields = ['documentation', 'docs', 'official_page', 'website', 'github', 'pypi', 'url']
+        for field in url_fields:
+            if field in doc.metadata and doc.metadata[field]:
+                url = doc.metadata[field]
+                # Format the field name nicely
+                field_name = field.replace('_', ' ').title()
+                sources.append(f"{field_name}: {url}")
+
+        # Combine content with source information
+        if sources:
+            chunk_with_source = f"{chunk}\n\n[Sources: {' | '.join(sources)}]"
+        else:
+            chunk_with_source = chunk
+
+        formatted_chunks.append(chunk_with_source)
+
+    context_str = "\n\n---\n\n".join(formatted_chunks)
+
     print(f"--- TOOL: Found {len(results)} chunks. ---")
     return context_str
 
@@ -200,8 +230,10 @@ def run_agent_chat(user_question: str) -> str:
         recipient=technician_agent,
         message=(
             f"Please answer this question: '{user_question}'. "
-            "You *must* use the 'query_documentation' tool to "
-            "find the relevant context first."
+            "You *must* use the 'query_documentation' tool to find the relevant context first. "
+            "Provide a concise but complete answer (2-3 paragraphs). "
+            "If the question asks 'how to' do something, provide step-by-step instructions as a numbered list. "
+            "Include relevant source links from the context at the end of your response."
         ),
     )
 

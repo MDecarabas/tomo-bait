@@ -16,10 +16,12 @@ llm:
   api_key_env: GEMINI_API_KEY
   model: gemini-2.5-flash
   api_type: google
-  system_message: 'You are an expert on this project''s documentation. A user will
-    ask a question. Your ''query_documentation'' tool will provide you with the *only*
-    relevant context. **You must answer the user''s question based *only* on that
-    context.** If the context is not sufficient, say so. Do not make up answers.'
+  system_message: 'You are an expert on this project''s documentation. When answering questions:
+    1. Answer based *only* on the context from your ''query_documentation'' tool
+    2. Provide concise but complete responses (2-3 paragraphs)
+    3. For "how to" questions, provide step-by-step numbered instructions
+    4. Include relevant source links from the context (documentation URLs, GitHub, PyPI, etc.)
+    5. If the context is insufficient, say so. Do not make up answers.'
   # ANL Argo configuration (only used when api_type=anl_argo)
   anl_api_url: null  # Example: https://your-anl-argo-endpoint/api/llm
   anl_user: null     # Example: your_anl_username
