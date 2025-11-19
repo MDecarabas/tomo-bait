@@ -4,18 +4,34 @@ from typing import Annotated
 import autogen
 from autogen import LLMConfig
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
+from .config import backup_config, get_config, register_reload_callback, reload_config, save_config, TomoBaitConfig
+from .config_generator import generate_config_from_prompt, config_dict_to_yaml
+from .config_watcher import start_config_watcher
 from .retriever import get_documentation_retriever
 
 load_dotenv()
+
+# Load configuration
+config = get_config()
 
 # --- FastAPI App ---
 api = FastAPI()
 
 class ChatQuery(BaseModel):
     query: str
+
+class ConfigResponse(BaseModel):
+    config: dict
+
+class GenerateConfigRequest(BaseModel):
+    prompt: str
+
+class GenerateConfigResponse(BaseModel):
+    yaml_config: str
+    config_dict: dict
 
 @api.post("/chat")
 async def chat_endpoint(chat_query: ChatQuery):
@@ -25,12 +41,61 @@ async def chat_endpoint(chat_query: ChatQuery):
     answer = run_agent_chat(chat_query.query)
     return {"response": answer}
 
-# --- 1. Interchangeable LLM Config ---
-api_key = os.getenv("GEMINI_API_KEY")
-if not api_key:
-    print("❌ ERROR: GEMINI_API_KEY environment variable not set.")
-    exit()
+@api.get("/config")
+async def get_config_endpoint():
+    """
+    Get current configuration.
+    """
+    return {"config": config.model_dump()}
 
+@api.post("/config")
+async def update_config_endpoint(new_config: dict):
+    """
+    Update configuration (requires restart to apply).
+    """
+    # This is a placeholder - in production you'd want to validate and save
+    return {"message": "Configuration updated. Restart backend to apply changes."}
+
+@api.post("/generate-config")
+async def generate_config_endpoint(request: GenerateConfigRequest):
+    """
+    Generate a configuration from natural language prompt using Gemini.
+    """
+    try:
+        # Generate config using Gemini
+        config_dict = generate_config_from_prompt(request.prompt)
+
+        # Convert to YAML
+        yaml_config = config_dict_to_yaml(config_dict)
+
+        return GenerateConfigResponse(
+            yaml_config=yaml_config,
+            config_dict=config_dict
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate config: {str(e)}")
+
+@api.post("/apply-config")
+async def apply_config_endpoint(new_config: dict):
+    """
+    Apply a new configuration after backing up the old one.
+    """
+    try:
+        # Backup current config
+        backup_path = backup_config()
+
+        # Validate and save new config
+        validated_config = TomoBaitConfig(**new_config)
+        save_config(validated_config)
+
+        return {
+            "message": "Configuration applied successfully!",
+            "backup_path": backup_path
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid configuration: {str(e)}")
+
+# --- 1. Interchangeable LLM Config ---
 query_documentation_tool_dict = {
     "type": "function",
     "function": {
@@ -49,16 +114,42 @@ query_documentation_tool_dict = {
     }
 }
 
-llm_config = LLMConfig(
-    config_list=[
-        {
-            "api_type": "google",
-            "model": "gemini-2.5-flash",
-            "api_key": api_key,
-            "tools": [query_documentation_tool_dict],
-        }
-    ]
-)
+# Handle different LLM providers
+if config.llm.api_type == "anl_argo":
+    # ANL Argo doesn't use API keys, but requires URL, user, and model
+    if not config.llm.anl_api_url or not config.llm.anl_user:
+        print("❌ ERROR: ANL Argo requires anl_api_url and anl_user in config.yaml")
+        exit()
+
+    from .anl_llm import create_anl_llm_config
+
+    llm_config = LLMConfig(
+        config_list=[
+            create_anl_llm_config(
+                api_url=config.llm.anl_api_url,
+                user=config.llm.anl_user,
+                model=config.llm.anl_model or config.llm.model,
+                temperature=0.1,
+            )
+        ]
+    )
+else:
+    # Standard API key-based providers (Gemini, OpenAI, Anthropic, Azure)
+    api_key = os.getenv(config.llm.api_key_env)
+    if not api_key:
+        print(f"❌ ERROR: {config.llm.api_key_env} environment variable not set.")
+        exit()
+
+    llm_config = LLMConfig(
+        config_list=[
+            {
+                "api_type": config.llm.api_type,
+                "model": config.llm.model,
+                "api_key": api_key,
+                "tools": [query_documentation_tool_dict],
+            }
+        ]
+    )
 
 # --- 2. Load Retriever (from Phase 1) ---
 retriever = get_documentation_retriever()
@@ -68,13 +159,7 @@ retriever = get_documentation_retriever()
 technician_agent = autogen.AssistantAgent(
     "doc_expert",
     llm_config=llm_config,
-    system_message=(
-        "You are an expert on this project's documentation. "
-        "A user will ask a question. Your 'query_documentation' tool "
-        "will provide you with the *only* relevant context. "
-        "**You must answer the user's question based *only* on that context.** "
-        "If the context is not sufficient, say so. Do not make up answers."
-    )
+    system_message=config.llm.system_message
 )
 
 worker_agent = autogen.UserProxyAgent(
@@ -128,6 +213,22 @@ def run_agent_chat(user_question: str) -> str:
         print(final_answer)
         return final_answer
     return "Sorry, I couldn't find an answer."
+
+
+# --- Startup Event: Initialize Config Watcher ---
+@api.on_event("startup")
+async def startup_event():
+    """Initialize config file watcher on startup."""
+    def on_config_reload():
+        """Callback for config reload."""
+        print("🔄 Config reloaded in backend")
+        # Note: We reload config but don't recreate agents/retriever
+        # A full restart would be needed for those changes
+        reload_config()
+
+    # Start watching config file
+    start_config_watcher(callback=on_config_reload)
+    print("✅ Config watcher started")
 
 
 if __name__ == '__main__':

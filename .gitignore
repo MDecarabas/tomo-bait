@@ -215,6 +215,7 @@ __marimo__/
 
 # VScode
 .vscode/
-chroma_db/chroma.sqlite3
+
+# Project-specific ignores
+chroma_db/
 tomo_documentation/2bm-docs
-chroma_db/chroma.sqlite3
