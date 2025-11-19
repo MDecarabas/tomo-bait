@@ -3,30 +3,38 @@ import sys
 from langchain_chroma import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
 
-# --- Configuration ---
-# Make sure these match what you used in Phase 1
-DB_PATH = "./chroma_db"
-MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
-# ---
+from .config import get_config
+
+# Load configuration
+config = get_config()
 
 def get_documentation_retriever():
     """
     Initializes and returns a retriever for our ChromaDB.
     """
-    print(f"Loading embedding model: {MODEL_NAME}")
+    print(f"Loading embedding model: {config.retriever.embedding_model}")
     # Initialize the same embedding model
-    embeddings = HuggingFaceEmbeddings(model_name=MODEL_NAME)
-    
-    print(f"Connecting to vector store at: {DB_PATH}")
+    embeddings = HuggingFaceEmbeddings(model_name=config.retriever.embedding_model)
+
+    print(f"Connecting to vector store at: {config.retriever.db_path}")
     # Connect to the existing, persisted database
     vectorstore = Chroma(
-        persist_directory=DB_PATH,
+        persist_directory=config.retriever.db_path,
         embedding_function=embeddings
     )
-    
+
     print("✅ Retriever is ready.")
-    # Create a retriever object that can search for 3 relevant docs
-    return vectorstore.as_retriever(search_kwargs={"k": 3})
+
+    # Build search kwargs based on config
+    search_kwargs = {"k": config.retriever.k}
+    if config.retriever.score_threshold is not None:
+        search_kwargs["score_threshold"] = config.retriever.score_threshold
+
+    # Create a retriever object
+    return vectorstore.as_retriever(
+        search_type=config.retriever.search_type,
+        search_kwargs=search_kwargs
+    )
 
 # --- Test Block ---
 if __name__ == "__main__":

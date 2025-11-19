@@ -14,6 +14,11 @@ from langchain_community.document_loaders import ReadTheDocsLoader
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
+from .config import get_config
+
+# Load configuration
+config = get_config()
+
 
 def ingest_documentation(repo_url: str, documentation_dir: Union[str, Path]):
     """
@@ -97,34 +102,30 @@ def load_chunk_embed(HTML_BUILD_DIR: str):
 
     # This splitter tries to keep paragraphs/sentences together
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000,  # The size of each chunk in characters
-        chunk_overlap=200   # How much chunks overlap
+        chunk_size=config.text_processing.chunk_size,
+        chunk_overlap=config.text_processing.chunk_overlap
     )
 
     print("Splitting documents into chunks...")
     splits = text_splitter.split_documents(docs)
     print(f"✅ Split {len(docs)} docs into {len(splits)} chunks.")
 
-    # Define where to save the database
-    DB_PATH = "./chroma_db"
-
-    print("Initializing embedding model3...")
+    print("Initializing embedding model...")
     # This model will be downloaded and run 100% locally
-    model_name = "sentence-transformers/all-MiniLM-L6-v2"
-    embeddings = HuggingFaceEmbeddings(model_name=model_name)
+    embeddings = HuggingFaceEmbeddings(model_name=config.retriever.embedding_model)
 
     print("✅ Using local, open-source embeddings!")
-    print(f"Creating and saving vector store at {DB_PATH}...")
+    print(f"Creating and saving vector store at {config.retriever.db_path}...")
     # This is the magic command.
     # It takes all splits, embeds them, and saves to disk.
     vectorstore = Chroma.from_documents(
         documents=splits,
         embedding=embeddings,
-        persist_directory=DB_PATH
-)
+        persist_directory=config.retriever.db_path
+    )
 
     print("🎉 All done!")
-    print(f"Your knowledge base is ready and saved in '{DB_PATH}'.")
+    print(f"Your knowledge base is ready and saved in '{config.retriever.db_path}'.")
 
 # if __name__ == "__main__":
 #     current_directory =  Path.cwd()

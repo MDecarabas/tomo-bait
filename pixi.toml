@@ -1,18 +1,18 @@
 [workspace]
 channels = ["conda-forge"]
-platforms = ["osx-arm64"]
+platforms = ["osx-arm64", "linux-64"]
 
 [tasks]
 install = "pip install -e ."
 start-backend = "PYTHONPATH=src uvicorn tomobait.app:api --reload --port 8001"
-start-frontend = "PYTHONPATH=src python src/tomobait/frontend.py"
+start-frontend = "PYTHONPATH=src python -m tomobait.frontend"
 run-cli = "PYTHONPATH=src python src/tomobait/cli.py"
 lint = "ruff check ."
 format = "ruff format ."
 ingest = "python src/data_ingestion.py"
 
 [dependencies]
-python = ">=3.12"
+python = ">=3.12,<3.13"
 google-genai = ">=1.49.0,<2"
 gitpython = ">=3.1.45,<4"
 sphinx = ">=8.2.3,<9"
@@ -34,3 +34,5 @@ fastapi = "*"
 uvicorn = ">=0.29.0, <0.30"
 gradio = "*"
 requests = "*"
+pyyaml = "*"
+watchdog = "*"

@@ -1,0 +1,32 @@
+documentation:
+  git_repos:
+  - https://github.com/xray-imaging/2bm-docs.git
+  local_folders: []
+  docs_output_dir: tomo_documentation
+  sphinx_build_html_path: tomo_documentation/2bm-docs/docs/_build/html
+
+retriever:
+  db_path: ./chroma_db
+  embedding_model: sentence-transformers/all-MiniLM-L6-v2
+  k: 3
+  search_type: similarity
+  score_threshold: null
+
+llm:
+  api_key_env: GEMINI_API_KEY
+  model: gemini-2.5-flash
+  api_type: google
+  system_message: 'You are an expert on this project''s documentation. A user will
+    ask a question. Your ''query_documentation'' tool will provide you with the *only*
+    relevant context. **You must answer the user''s question based *only* on that
+    context.** If the context is not sufficient, say so. Do not make up answers.'
+
+text_processing:
+  chunk_size: 1000
+  chunk_overlap: 200
+
+server:
+  backend_host: 127.0.0.1
+  backend_port: 8001
+  frontend_host: 0.0.0.0
+  frontend_port: 8000
