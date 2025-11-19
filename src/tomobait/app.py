@@ -96,11 +96,6 @@ async def apply_config_endpoint(new_config: dict):
         raise HTTPException(status_code=400, detail=f"Invalid configuration: {str(e)}")
 
 # --- 1. Interchangeable LLM Config ---
-api_key = os.getenv(config.llm.api_key_env)
-if not api_key:
-    print(f"❌ ERROR: {config.llm.api_key_env} environment variable not set.")
-    exit()
-
 query_documentation_tool_dict = {
     "type": "function",
     "function": {
@@ -119,16 +114,42 @@ query_documentation_tool_dict = {
     }
 }
 
-llm_config = LLMConfig(
-    config_list=[
-        {
-            "api_type": config.llm.api_type,
-            "model": config.llm.model,
-            "api_key": api_key,
-            "tools": [query_documentation_tool_dict],
-        }
-    ]
-)
+# Handle different LLM providers
+if config.llm.api_type == "anl_argo":
+    # ANL Argo doesn't use API keys, but requires URL, user, and model
+    if not config.llm.anl_api_url or not config.llm.anl_user:
+        print("❌ ERROR: ANL Argo requires anl_api_url and anl_user in config.yaml")
+        exit()
+
+    from .anl_llm import create_anl_llm_config
+
+    llm_config = LLMConfig(
+        config_list=[
+            create_anl_llm_config(
+                api_url=config.llm.anl_api_url,
+                user=config.llm.anl_user,
+                model=config.llm.anl_model or config.llm.model,
+                temperature=0.1,
+            )
+        ]
+    )
+else:
+    # Standard API key-based providers (Gemini, OpenAI, Anthropic, Azure)
+    api_key = os.getenv(config.llm.api_key_env)
+    if not api_key:
+        print(f"❌ ERROR: {config.llm.api_key_env} environment variable not set.")
+        exit()
+
+    llm_config = LLMConfig(
+        config_list=[
+            {
+                "api_type": config.llm.api_type,
+                "model": config.llm.model,
+                "api_key": api_key,
+                "tools": [query_documentation_tool_dict],
+            }
+        ]
+    )
 
 # --- 2. Load Retriever (from Phase 1) ---
 retriever = get_documentation_retriever()

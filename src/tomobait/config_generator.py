@@ -33,10 +33,13 @@ retriever:
   score_threshold: float or null (0.0-1.0, only for similarity_score_threshold)
 
 llm:
-  api_key_env: string (environment variable name for API key, e.g., GEMINI_API_KEY, OPENAI_API_KEY)
-  model: string (model name: gemini-2.5-flash, gpt-4, claude-3-opus, etc.)
-  api_type: string (google, openai, azure, anthropic)
+  api_key_env: string (environment variable name for API key, e.g., GEMINI_API_KEY, OPENAI_API_KEY; leave empty for ANL Argo)
+  model: string (model name: gemini-2.5-flash, gpt-4, claude-3-opus, llama-2-70b, etc.)
+  api_type: string (google, openai, azure, anthropic, anl_argo)
   system_message: string (system prompt for the agent)
+  anl_api_url: string or null (ANL Argo API endpoint, only for api_type=anl_argo)
+  anl_user: string or null (ANL username, only for api_type=anl_argo)
+  anl_model: string or null (ANL model name, only for api_type=anl_argo)
 
 text_processing:
   chunk_size: integer (100-5000, default: 1000)
@@ -62,6 +65,7 @@ IMPORTANT RULES:
 10. For OpenAI: use api_type="openai", api_key_env="OPENAI_API_KEY", models like "gpt-4", "gpt-4-turbo", "gpt-3.5-turbo"
 11. For Anthropic: use api_type="anthropic", api_key_env="ANTHROPIC_API_KEY", models like "claude-3-opus", "claude-3-sonnet"
 12. For Azure: use api_type="azure", api_key_env="AZURE_OPENAI_API_KEY"
+13. For ANL Argo: use api_type="anl_argo", include anl_api_url, anl_user, anl_model fields, models like "llama-2-70b", "mixtral-8x7b"
 
 Example user request: "I want to index local documentation in /data/tomo with high accuracy"
 Expected output:

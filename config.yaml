@@ -20,6 +20,10 @@ llm:
     ask a question. Your ''query_documentation'' tool will provide you with the *only*
     relevant context. **You must answer the user''s question based *only* on that
     context.** If the context is not sufficient, say so. Do not make up answers.'
+  # ANL Argo configuration (only used when api_type=anl_argo)
+  anl_api_url: null  # Example: https://your-anl-argo-endpoint/api/llm
+  anl_user: null     # Example: your_anl_username
+  anl_model: null    # Example: llama-2-70b
 
 text_processing:
   chunk_size: 1000

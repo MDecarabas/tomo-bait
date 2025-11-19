@@ -72,6 +72,20 @@ class LLMConfig(BaseModel):
         description="System message for the documentation expert agent",
     )
 
+    # ANL Argo specific configuration
+    anl_api_url: Optional[str] = Field(
+        default=None,
+        description="ANL Argo API endpoint URL (only for api_type='anl_argo')",
+    )
+    anl_user: Optional[str] = Field(
+        default=None,
+        description="ANL username for API requests (only for api_type='anl_argo')",
+    )
+    anl_model: Optional[str] = Field(
+        default=None,
+        description="ANL model name (only for api_type='anl_argo')",
+    )
+
 
 class TextProcessingConfig(BaseModel):
     """Configuration for document text processing."""

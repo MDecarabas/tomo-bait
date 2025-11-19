@@ -91,7 +91,7 @@ pixi run ingest
 
 - **Embedding Model**: `sentence-transformers/all-MiniLM-L6-v2` (must match between ingestion and retrieval)
 - **ChromaDB Path**: `./chroma_db` (relative to project root)
-- **LLM Providers**: Supports Gemini (default), OpenAI, Anthropic, and Azure via Autogen
+- **LLM Providers**: Supports Gemini (default), OpenAI, Anthropic, Azure, and ANL Argo via Autogen
 - **Configuration**: Managed via `config.yaml` with hot-reload support
 - **Ports**: Backend on 8001, Frontend on 8000
 
@@ -127,7 +127,19 @@ AZURE_OPENAI_API_KEY=your_azure_openai_api_key_here
 ```
 Get it from your Azure portal.
 
-**Note**: Copy `.env.example` to `.env` and fill in your API key. The provider and model can be configured via the Configuration tab in the web interface or by editing `config.yaml`.
+### ANL Argo
+ANL Argo is an internal LLM service that doesn't require API keys. Instead, configure in `config.yaml`:
+```yaml
+llm:
+  api_type: anl_argo
+  anl_api_url: https://your-anl-argo-endpoint/api/llm
+  anl_user: your_anl_username
+  anl_model: llama-2-70b
+```
+
+Supported models: `llama-2-70b`, `mixtral-8x7b` (check with your ANL Argo administrator for available models)
+
+**Note**: For standard providers, copy `.env.example` to `.env` and fill in your API key. The provider and model can be configured via the Configuration tab in the web interface or by editing `config.yaml`.
 
 ## Code Style
 

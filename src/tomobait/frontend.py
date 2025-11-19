@@ -186,7 +186,8 @@ def load_config_values():
         "google": "gemini",
         "openai": "openai",
         "azure": "azure",
-        "anthropic": "anthropic"
+        "anthropic": "anthropic",
+        "anl_argo": "anl_argo"
     }
     provider = api_type_to_provider.get(config.llm.api_type, "gemini")
 
@@ -205,6 +206,9 @@ def load_config_values():
         config.llm.api_type,
         config.llm.model,
         config.llm.system_message,
+        config.llm.anl_api_url or "",  # ANL Argo fields
+        config.llm.anl_user or "",
+        config.llm.anl_model or "",
         config.text_processing.chunk_size,
         config.text_processing.chunk_overlap,
     )
@@ -225,6 +229,9 @@ def save_config_values(
     api_type,
     model,
     system_message,
+    anl_api_url,  # ANL Argo fields
+    anl_user,
+    anl_model,
     chunk_size,
     chunk_overlap,
 ):
@@ -251,10 +258,15 @@ def save_config_values(
     config.retriever.search_type = search_type
     config.retriever.score_threshold = score_threshold if score_threshold > 0 else None
 
-    config.llm.api_key_env = api_key_env  # Add api_key_env
+    config.llm.api_key_env = api_key_env
     config.llm.model = model
     config.llm.api_type = api_type
     config.llm.system_message = system_message
+
+    # Save ANL Argo fields
+    config.llm.anl_api_url = anl_api_url if anl_api_url else None
+    config.llm.anl_user = anl_user if anl_user else None
+    config.llm.anl_model = anl_model if anl_model else None
 
     config.text_processing.chunk_size = chunk_size
     config.text_processing.chunk_overlap = chunk_overlap
@@ -268,7 +280,7 @@ def save_config_values(
 def update_llm_fields_from_provider(provider):
     """
     Update LLM-related fields based on selected provider.
-    Returns: (model_choices, api_type, api_key_env)
+    Returns: (model_choices, api_type, api_key_env, anl_settings_visibility)
     """
     provider_config = {
         "gemini": {
@@ -290,15 +302,24 @@ def update_llm_fields_from_provider(provider):
             "models": ["claude-3-opus", "claude-3-sonnet", "claude-3-haiku"],
             "api_type": "anthropic",
             "api_key_env": "ANTHROPIC_API_KEY"
+        },
+        "anl_argo": {
+            "models": ["llama-2-70b", "mixtral-8x7b"],
+            "api_type": "anl_argo",
+            "api_key_env": ""  # No API key needed for ANL Argo
         }
     }
 
     config = provider_config.get(provider, provider_config["gemini"])
 
+    # Show ANL settings only for ANL Argo provider
+    anl_visible = (provider == "anl_argo")
+
     return (
         gr.Dropdown(choices=config["models"], value=config["models"][0]),
         config["api_type"],
-        config["api_key_env"]
+        config["api_key_env"],
+        gr.Group(visible=anl_visible)  # Show/hide ANL settings
     )
 
 
@@ -421,7 +442,7 @@ with gr.Blocks(theme=gr.themes.Default(primary_hue="blue")) as demo:
             with gr.Accordion("🤖 LLM Settings", open=True):
                 provider = gr.Dropdown(
                     label="LLM Provider",
-                    choices=["gemini", "openai", "azure", "anthropic"],
+                    choices=["gemini", "openai", "azure", "anthropic", "anl_argo"],
                     value="gemini",
                 )
                 api_key_env = gr.Dropdown(
@@ -432,7 +453,7 @@ with gr.Blocks(theme=gr.themes.Default(primary_hue="blue")) as demo:
                 )
                 api_type = gr.Dropdown(
                     label="API Type (for autogen)",
-                    choices=["google", "openai", "azure", "anthropic"],
+                    choices=["google", "openai", "azure", "anthropic", "anl_argo"],
                     value="google",
                     allow_custom_value=True,
                 )
@@ -449,11 +470,32 @@ with gr.Blocks(theme=gr.themes.Default(primary_hue="blue")) as demo:
                         "claude-3-opus",
                         "claude-3-sonnet",
                         "claude-3-haiku",
+                        "llama-2-70b",
+                        "mixtral-8x7b",
                     ],
                     value="gemini-2.5-flash",
                     allow_custom_value=True,
                 )
                 system_msg = gr.Textbox(label="System Message", lines=5)
+
+                # ANL Argo specific settings (shown/hidden based on provider)
+                with gr.Group(visible=False) as anl_settings:
+                    gr.Markdown("### ANL Argo Configuration")
+                    anl_api_url = gr.Textbox(
+                        label="ANL API URL",
+                        placeholder="https://your-anl-argo-endpoint/api/llm",
+                        value="",
+                    )
+                    anl_user = gr.Textbox(
+                        label="ANL Username",
+                        placeholder="your_anl_username",
+                        value="",
+                    )
+                    anl_model = gr.Textbox(
+                        label="ANL Model Name",
+                        placeholder="llama-2-70b",
+                        value="",
+                    )
 
             with gr.Accordion("✂️ Text Processing", open=False):
                 chunk_size = gr.Slider(
@@ -470,7 +512,7 @@ with gr.Blocks(theme=gr.themes.Default(primary_hue="blue")) as demo:
             provider.change(
                 update_llm_fields_from_provider,
                 inputs=[provider],
-                outputs=[llm_model, api_type, api_key_env],
+                outputs=[llm_model, api_type, api_key_env, anl_settings],
             )
 
             # Load current config values on startup
@@ -492,6 +534,9 @@ with gr.Blocks(theme=gr.themes.Default(primary_hue="blue")) as demo:
                     api_type,
                     llm_model,
                     system_msg,
+                    anl_api_url,
+                    anl_user,
+                    anl_model,
                     chunk_size,
                     chunk_overlap,
                 ],
@@ -515,6 +560,9 @@ with gr.Blocks(theme=gr.themes.Default(primary_hue="blue")) as demo:
                     api_type,
                     llm_model,
                     system_msg,
+                    anl_api_url,
+                    anl_user,
+                    anl_model,
                     chunk_size,
                     chunk_overlap,
                 ],

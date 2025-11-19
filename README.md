@@ -6,7 +6,7 @@ A RAG (Retrieval-Augmented Generation) system for tomography beamline documentat
 
 - **Multi-Source Documentation**: Index from Git repositories and local folders
 - **AI-Powered Q&A**: Ask questions in natural language and get accurate answers from documentation
-- **Multiple LLM Providers**: Support for Gemini, OpenAI, Anthropic, and Azure
+- **Multiple LLM Providers**: Support for Gemini, OpenAI, Anthropic, Azure, and ANL Argo
 - **Hot-Reload Configuration**: Update settings without restarting the application
 - **AI Config Generator**: Generate configurations from natural language descriptions
 - **Conversation History**: Save and resume conversations
@@ -204,6 +204,15 @@ llm:
   api_key_env: ANTHROPIC_API_KEY
   model: claude-3-opus
   api_type: anthropic
+```
+
+**ANL Argo** (Internal LLM service)
+```yaml
+llm:
+  api_type: anl_argo
+  anl_api_url: https://your-anl-argo-endpoint/api/llm
+  anl_user: your_anl_username
+  anl_model: llama-2-70b
 ```
 
 ## 📋 Available Commands
