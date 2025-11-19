@@ -33,9 +33,9 @@ retriever:
   score_threshold: float or null (0.0-1.0, only for similarity_score_threshold)
 
 llm:
-  api_key_env: string (environment variable name for API key)
-  model: string (Gemini model name)
-  api_type: string (google, openai, etc.)
+  api_key_env: string (environment variable name for API key, e.g., GEMINI_API_KEY, OPENAI_API_KEY)
+  model: string (model name: gemini-2.5-flash, gpt-4, claude-3-opus, etc.)
+  api_type: string (google, openai, azure, anthropic)
   system_message: string (system prompt for the agent)
 
 text_processing:
@@ -59,6 +59,9 @@ IMPORTANT RULES:
 7. If user mentions "high accuracy", increase k and use smaller chunks
 8. If user mentions "fast", use lower k and larger chunks
 9. Always include all sections, even if using defaults
+10. For OpenAI: use api_type="openai", api_key_env="OPENAI_API_KEY", models like "gpt-4", "gpt-4-turbo", "gpt-3.5-turbo"
+11. For Anthropic: use api_type="anthropic", api_key_env="ANTHROPIC_API_KEY", models like "claude-3-opus", "claude-3-sonnet"
+12. For Azure: use api_type="azure", api_key_env="AZURE_OPENAI_API_KEY"
 
 Example user request: "I want to index local documentation in /data/tomo with high accuracy"
 Expected output:
@@ -86,6 +89,40 @@ llm:
 text_processing:
   chunk_size: 800
   chunk_overlap: 200
+
+server:
+  backend_host: 127.0.0.1
+  backend_port: 8001
+  frontend_host: 0.0.0.0
+  frontend_port: 8000
+```
+
+Example user request: "Use OpenAI GPT-4 with fast retrieval from GitHub repo https://github.com/xray-imaging/2bm-docs"
+Expected output:
+```yaml
+documentation:
+  git_repos:
+  - https://github.com/xray-imaging/2bm-docs
+  local_folders: []
+  docs_output_dir: tomo_documentation
+  sphinx_build_html_path: tomo_documentation/docs/_build/html
+
+retriever:
+  db_path: ./chroma_db
+  embedding_model: sentence-transformers/all-MiniLM-L6-v2
+  k: 2
+  search_type: similarity
+  score_threshold: null
+
+llm:
+  api_key_env: OPENAI_API_KEY
+  model: gpt-4
+  api_type: openai
+  system_message: 'You are an expert on this project''s documentation. A user will ask a question. Your ''query_documentation'' tool will provide you with the *only* relevant context. **You must answer the user''s question based *only* on that context.** If the context is not sufficient, say so. Do not make up answers.'
+
+text_processing:
+  chunk_size: 1200
+  chunk_overlap: 150
 
 server:
   backend_host: 127.0.0.1

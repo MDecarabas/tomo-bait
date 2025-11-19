@@ -91,13 +91,43 @@ pixi run ingest
 
 - **Embedding Model**: `sentence-transformers/all-MiniLM-L6-v2` (must match between ingestion and retrieval)
 - **ChromaDB Path**: `./chroma_db` (relative to project root)
-- **LLM**: Google Gemini 2.5 Flash via Autogen
+- **LLM Providers**: Supports Gemini (default), OpenAI, Anthropic, and Azure via Autogen
+- **Configuration**: Managed via `config.yaml` with hot-reload support
 - **Ports**: Backend on 8001, Frontend on 8000
 
 ## Environment Variables
 
-Required:
-- `GEMINI_API_KEY`: Google Gemini API key for the LLM
+The system supports multiple LLM providers. Set up the appropriate API key based on your configuration:
+
+### Gemini (Default)
+```bash
+GEMINI_API_KEY=your_gemini_api_key_here
+```
+Get your key from: https://aistudio.google.com/app/apikey
+
+### OpenAI
+```bash
+OPENAI_API_KEY=your_openai_api_key_here
+```
+Get your key from: https://platform.openai.com/api-keys
+
+Supported models: `gpt-4`, `gpt-4-turbo`, `gpt-4o`, `gpt-3.5-turbo`
+
+### Anthropic (Claude)
+```bash
+ANTHROPIC_API_KEY=your_anthropic_api_key_here
+```
+Get your key from: https://console.anthropic.com/settings/keys
+
+Supported models: `claude-3-opus`, `claude-3-sonnet`, `claude-3-haiku`
+
+### Azure OpenAI
+```bash
+AZURE_OPENAI_API_KEY=your_azure_openai_api_key_here
+```
+Get it from your Azure portal.
+
+**Note**: Copy `.env.example` to `.env` and fill in your API key. The provider and model can be configured via the Configuration tab in the web interface or by editing `config.yaml`.
 
 ## Code Style
 

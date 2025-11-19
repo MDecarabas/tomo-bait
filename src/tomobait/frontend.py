@@ -180,6 +180,16 @@ def load_config_values():
     Load current config values for the config tab.
     """
     config = get_config()
+
+    # Determine provider from api_type
+    api_type_to_provider = {
+        "google": "gemini",
+        "openai": "openai",
+        "azure": "azure",
+        "anthropic": "anthropic"
+    }
+    provider = api_type_to_provider.get(config.llm.api_type, "gemini")
+
     return (
         "\n".join(config.documentation.git_repos),
         "\n".join(config.documentation.local_folders),
@@ -190,8 +200,10 @@ def load_config_values():
         config.retriever.k,
         config.retriever.search_type,
         config.retriever.score_threshold or 0.0,
-        config.llm.model,
+        provider,  # Add provider
+        config.llm.api_key_env,  # Add api_key_env
         config.llm.api_type,
+        config.llm.model,
         config.llm.system_message,
         config.text_processing.chunk_size,
         config.text_processing.chunk_overlap,
@@ -208,8 +220,10 @@ def save_config_values(
     k,
     search_type,
     score_threshold,
-    model,
+    provider,  # Add provider (not saved, just for UI)
+    api_key_env,  # Add api_key_env
     api_type,
+    model,
     system_message,
     chunk_size,
     chunk_overlap,
@@ -237,6 +251,7 @@ def save_config_values(
     config.retriever.search_type = search_type
     config.retriever.score_threshold = score_threshold if score_threshold > 0 else None
 
+    config.llm.api_key_env = api_key_env  # Add api_key_env
     config.llm.model = model
     config.llm.api_type = api_type
     config.llm.system_message = system_message
@@ -247,7 +262,44 @@ def save_config_values(
     # Save to file
     save_config(config)
 
-    return "Configuration saved successfully! Restart the backend to apply changes."
+    return "Configuration saved successfully! Config will hot-reload automatically."
+
+
+def update_llm_fields_from_provider(provider):
+    """
+    Update LLM-related fields based on selected provider.
+    Returns: (model_choices, api_type, api_key_env)
+    """
+    provider_config = {
+        "gemini": {
+            "models": ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"],
+            "api_type": "google",
+            "api_key_env": "GEMINI_API_KEY"
+        },
+        "openai": {
+            "models": ["gpt-4", "gpt-4-turbo", "gpt-4o", "gpt-3.5-turbo"],
+            "api_type": "openai",
+            "api_key_env": "OPENAI_API_KEY"
+        },
+        "azure": {
+            "models": ["gpt-4", "gpt-35-turbo"],
+            "api_type": "azure",
+            "api_key_env": "AZURE_OPENAI_API_KEY"
+        },
+        "anthropic": {
+            "models": ["claude-3-opus", "claude-3-sonnet", "claude-3-haiku"],
+            "api_type": "anthropic",
+            "api_key_env": "ANTHROPIC_API_KEY"
+        }
+    }
+
+    config = provider_config.get(provider, provider_config["gemini"])
+
+    return (
+        gr.Dropdown(choices=config["models"], value=config["models"][0]),
+        config["api_type"],
+        config["api_key_env"]
+    )
 
 
 # --- Gradio Interface ---
@@ -367,8 +419,40 @@ with gr.Blocks(theme=gr.themes.Default(primary_hue="blue")) as demo:
                 )
 
             with gr.Accordion("🤖 LLM Settings", open=True):
-                llm_model = gr.Textbox(label="Model Name")
-                api_type = gr.Textbox(label="API Type")
+                provider = gr.Dropdown(
+                    label="LLM Provider",
+                    choices=["gemini", "openai", "azure", "anthropic"],
+                    value="gemini",
+                )
+                api_key_env = gr.Dropdown(
+                    label="API Key Environment Variable",
+                    choices=["GEMINI_API_KEY", "OPENAI_API_KEY", "AZURE_OPENAI_API_KEY", "ANTHROPIC_API_KEY"],
+                    value="GEMINI_API_KEY",
+                    allow_custom_value=True,
+                )
+                api_type = gr.Dropdown(
+                    label="API Type (for autogen)",
+                    choices=["google", "openai", "azure", "anthropic"],
+                    value="google",
+                    allow_custom_value=True,
+                )
+                llm_model = gr.Dropdown(
+                    label="Model Name",
+                    choices=[
+                        "gemini-2.5-flash",
+                        "gemini-2.0-flash",
+                        "gemini-1.5-pro",
+                        "gpt-4",
+                        "gpt-4-turbo",
+                        "gpt-4o",
+                        "gpt-3.5-turbo",
+                        "claude-3-opus",
+                        "claude-3-sonnet",
+                        "claude-3-haiku",
+                    ],
+                    value="gemini-2.5-flash",
+                    allow_custom_value=True,
+                )
                 system_msg = gr.Textbox(label="System Message", lines=5)
 
             with gr.Accordion("✂️ Text Processing", open=False):
@@ -381,6 +465,13 @@ with gr.Blocks(theme=gr.themes.Default(primary_hue="blue")) as demo:
 
             save_cfg_btn = gr.Button("💾 Save Configuration", variant="primary")
             config_status = gr.Textbox(label="Status", interactive=False)
+
+            # Connect provider change event to update fields
+            provider.change(
+                update_llm_fields_from_provider,
+                inputs=[provider],
+                outputs=[llm_model, api_type, api_key_env],
+            )
 
             # Load current config values on startup
             demo.load(
@@ -396,8 +487,10 @@ with gr.Blocks(theme=gr.themes.Default(primary_hue="blue")) as demo:
                     k_value,
                     search_type,
                     score_threshold,
-                    llm_model,
+                    provider,
+                    api_key_env,
                     api_type,
+                    llm_model,
                     system_msg,
                     chunk_size,
                     chunk_overlap,
@@ -417,8 +510,10 @@ with gr.Blocks(theme=gr.themes.Default(primary_hue="blue")) as demo:
                     k_value,
                     search_type,
                     score_threshold,
-                    llm_model,
+                    provider,
+                    api_key_env,
                     api_type,
+                    llm_model,
                     system_msg,
                     chunk_size,
                     chunk_overlap,
