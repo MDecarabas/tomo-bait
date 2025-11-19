@@ -213,3 +213,4 @@ __marimo__/
 
 # VScode
 .vscode/
+chroma_db/
