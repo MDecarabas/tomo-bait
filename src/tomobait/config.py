@@ -96,6 +96,9 @@ class ServerConfig(BaseModel):
 class TomoBaitConfig(BaseModel):
     """Main configuration for TomoBait application."""
 
+    # Allow extra fields for custom configuration sections (like 'resources')
+    model_config = {"extra": "allow"}
+
     documentation: DocumentationSourceConfig = Field(
         default_factory=DocumentationSourceConfig
     )
