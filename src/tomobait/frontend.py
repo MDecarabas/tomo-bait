@@ -796,6 +796,10 @@ with gr.Blocks(theme=gr.themes.Default(primary_hue="blue")) as demo:
             )
 
             with gr.Accordion("📚 Documentation Sources", open=True):
+                with gr.Row():
+                    gr.Markdown("### Documentation Sources Configuration")
+                    sources_refresh_btn = gr.Button("🔄 Refresh", size="sm", variant="secondary")
+
                 sources_git_repos = gr.Textbox(
                     label="Git Repositories (one per line)",
                     lines=3,
@@ -861,6 +865,19 @@ with gr.Blocks(theme=gr.themes.Default(primary_hue="blue")) as demo:
                 sources_ingest_status
             )
 
+            # Connect refresh button
+            sources_refresh_btn.click(
+                load_sources_values,
+                None,
+                [
+                    sources_git_repos,
+                    sources_local_folders,
+                    sources_docs_output,
+                    sources_sphinx_html,
+                    sources_resources_display,
+                ],
+            )
+
             # Connect save sources button
             save_sources_btn.click(
                 save_sources_values,
@@ -889,6 +906,14 @@ with gr.Blocks(theme=gr.themes.Default(primary_hue="blue")) as demo:
             gr.Markdown("## Technical Configuration")
             gr.Markdown(
                 "Edit RAG and LLM settings. **Restart the backend** to apply changes."
+            )
+
+            # Display config file path
+            config_file_path = gr.Textbox(
+                label="Configuration File Path",
+                value=str(Path("config.yaml").absolute()),
+                interactive=False,
+                lines=1,
             )
 
             with gr.Accordion("🔍 Retriever Settings", open=True):
