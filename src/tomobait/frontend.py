@@ -175,6 +175,259 @@ def delete_conversation_by_id(conv_id: str):
         return get_conversation_list(), f"Conversation not found: {conv_id}"
 
 
+def generate_conversation_list_html():
+    """
+    Generate HTML for the conversation list with inline Download/Delete buttons.
+    """
+    try:
+        conversations = storage.list_all()
+    except Exception as e:
+        return f"<p style='color: #d32f2f; padding: 20px;'>Error loading conversations: {str(e)}</p>"
+
+    if not conversations:
+        return "<p style='color: #666; padding: 20px;'>No saved conversations</p>"
+
+    html = """
+    <style>
+        .conv-list {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        .conv-row {
+            border-bottom: 1px solid #e0e0e0;
+            transition: background-color 0.2s;
+        }
+        .conv-row:hover {
+            background-color: #f5f5f5;
+        }
+        .conv-title {
+            cursor: pointer;
+            color: #1976d2;
+            font-weight: 500;
+            padding: 12px 8px;
+        }
+        .conv-title:hover {
+            color: #1565c0;
+            text-decoration: underline;
+        }
+        .conv-meta {
+            color: #666;
+            font-size: 0.875rem;
+            padding: 4px 8px;
+        }
+        .conv-actions {
+            padding: 8px;
+            text-align: right;
+            white-space: nowrap;
+        }
+        .conv-btn {
+            padding: 6px 12px;
+            margin-left: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background: white;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+        }
+        .conv-btn:hover {
+            background: #f0f0f0;
+            border-color: #999;
+        }
+        .conv-btn.download {
+            color: #1976d2;
+        }
+        .conv-btn.delete {
+            color: #d32f2f;
+        }
+        .conv-btn.delete:hover {
+            background: #ffebee;
+        }
+    </style>
+    <table class="conv-list">
+    """
+
+    for conv in conversations:
+        conv_id = conv['id']
+        title = conv['title']
+        message_count = conv['message_count']
+        updated = conv['updated_at'][:19].replace('T', ' ')
+        preview = conv['preview'][:80] + ('...' if len(conv['preview']) > 80 else '')
+
+        html += f"""
+        <tr class="conv-row">
+            <td>
+                <div class="conv-title" onclick="loadConversation('{conv_id}')">{title}</div>
+                <div class="conv-meta">
+                    {message_count} messages • Updated: {updated}
+                    <br/>
+                    <span style="color: #999;">{preview}</span>
+                </div>
+            </td>
+            <td class="conv-actions">
+                <button class="conv-btn download" onclick="downloadConversation('{conv_id}')">📥 Download</button>
+                <button class="conv-btn delete" onclick="deleteConversation('{conv_id}')">🗑️ Delete</button>
+            </td>
+        </tr>
+        """
+
+    html += """
+    </table>
+    <script>
+        function loadConversation(convId) {
+            // Find the load button and input field
+            const loadInput = document.querySelector('input[placeholder*="will be loaded"]');
+            const loadBtn = document.querySelector('button:has-text("Load Selected")') ||
+                           Array.from(document.querySelectorAll('button')).find(b => b.textContent.includes('Load'));
+
+            if (loadInput) {
+                loadInput.value = convId;
+                loadInput.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        }
+
+        function downloadConversation(convId) {
+            const downloadInput = document.querySelector('input[placeholder*="download"]');
+            const downloadBtn = Array.from(document.querySelectorAll('button')).find(b =>
+                b.textContent.includes('Download') && b.textContent.includes('JSON'));
+
+            if (downloadInput && downloadBtn) {
+                downloadInput.value = convId;
+                downloadInput.dispatchEvent(new Event('input', { bubbles: true }));
+                setTimeout(() => downloadBtn.click(), 100);
+            }
+        }
+
+        function deleteConversation(convId) {
+            if (confirm('Are you sure you want to delete this conversation?')) {
+                const deleteInput = document.querySelector('input[placeholder*="delete"]');
+                const deleteBtn = Array.from(document.querySelectorAll('button')).find(b =>
+                    b.textContent.includes('Delete') && b.textContent.includes('Selected'));
+
+                if (deleteInput && deleteBtn) {
+                    deleteInput.value = convId;
+                    deleteInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    setTimeout(() => deleteBtn.click(), 100);
+                }
+            }
+        }
+    </script>
+    """
+
+    return html
+
+
+def show_conversation_details(conv_id: str):
+    """
+    Show full conversation details in a formatted display.
+    """
+    if not conv_id or not conv_id.strip():
+        return "Select a conversation to view details."
+
+    conv = storage.load(conv_id.strip())
+    if not conv:
+        return f"Conversation not found: {conv_id}"
+
+    # Format conversation as markdown
+    lines = [
+        f"# {conv.title}",
+        f"**ID:** `{conv.id}`",
+        f"**Created:** {conv.created_at[:19].replace('T', ' ')}",
+        f"**Updated:** {conv.updated_at[:19].replace('T', ' ')}",
+        f"**Messages:** {len(conv.messages)}",
+        "",
+        "---",
+        ""
+    ]
+
+    for i, msg in enumerate(conv.messages, 1):
+        role_emoji = "👤" if msg.role == "user" else "🤖"
+        lines.append(f"### {role_emoji} Message {i} ({msg.role})")
+        lines.append(f"*{msg.timestamp[:19].replace('T', ' ')}*")
+        lines.append("")
+        lines.append(msg.content)
+        lines.append("")
+        lines.append("---")
+        lines.append("")
+
+    return "\n".join(lines)
+
+
+def download_conversation_json(conv_id: str):
+    """
+    Export conversation to JSON file.
+    Returns the file path for download.
+    """
+    import json
+    import tempfile
+    from pathlib import Path
+
+    if not conv_id or not conv_id.strip():
+        return None, "No conversation ID provided"
+
+    conv = storage.load(conv_id.strip())
+    if not conv:
+        return None, f"Conversation not found: {conv_id}"
+
+    # Create temporary file
+    temp_dir = Path(tempfile.gettempdir())
+    filename = f"conversation_{conv.id}_{conv.title[:30].replace(' ', '_')}.json"
+    filepath = temp_dir / filename
+
+    # Convert to dict and save
+    conv_dict = conv.model_dump()
+    with open(filepath, 'w', encoding='utf-8') as f:
+        json.dump(conv_dict, f, indent=2, ensure_ascii=False)
+
+    return str(filepath), f"Downloaded: {filename}"
+
+
+def delete_conversation_and_refresh(conv_id: str):
+    """
+    Delete a conversation and refresh the list.
+    """
+    if not conv_id or not conv_id.strip():
+        return generate_conversation_list_html(), "", "No conversation ID provided"
+
+    conv = storage.load(conv_id.strip())
+    if not conv:
+        return generate_conversation_list_html(), "", f"Conversation not found: {conv_id}"
+
+    title = conv.title
+    if storage.delete(conv_id.strip()):
+        return (
+            generate_conversation_list_html(),
+            "",
+            f"✅ Deleted: {title}"
+        )
+    else:
+        return (
+            generate_conversation_list_html(),
+            "",
+            f"❌ Failed to delete: {conv_id}"
+        )
+
+
+def load_conversation_and_refresh(conv_id: str):
+    """
+    Load a conversation and return it for the chatbot.
+    """
+    global current_conversation_id
+
+    if not conv_id or not conv_id.strip():
+        return [], "", "No conversation ID provided"
+
+    conv = storage.load(conv_id.strip())
+    if conv:
+        current_conversation_id = conv.id
+        # Convert to messages format
+        history = [{"role": msg.role, "content": msg.content} for msg in conv.messages]
+        return history, "", f"✅ Loaded: {conv.title}"
+    else:
+        return [], "", f"❌ Conversation not found: {conv_id}"
+
+
 def load_config_values():
     """
     Load current config values for Configuration tab (technical settings only).
@@ -465,45 +718,74 @@ with gr.Blocks(theme=gr.themes.Default(primary_hue="blue")) as demo:
         # --- Tab 2: Chat History ---
         with gr.Tab("History"):
             gr.Markdown("## Saved Conversations")
-
-            history_display = gr.Markdown(get_conversation_list())
-
-            with gr.Row():
-                refresh_btn = gr.Button("🔄 Refresh", size="sm")
-                refresh_btn.click(
-                    lambda: get_conversation_list(), None, history_display
-                )
-
-            gr.Markdown("### Load Conversation")
-            with gr.Row():
-                load_id_input = gr.Textbox(
-                    label="Conversation ID",
-                    placeholder="Enter conversation ID to load",
-                    scale=3,
-                )
-                load_btn = gr.Button("📥 Load", size="sm", scale=1)
-
-            load_status = gr.Textbox(label="Status", interactive=False)
-
-            gr.Markdown("### Delete Conversation")
-            with gr.Row():
-                delete_id_input = gr.Textbox(
-                    label="Conversation ID",
-                    placeholder="Enter conversation ID to delete",
-                    scale=3,
-                )
-                delete_btn = gr.Button("🗑️ Delete", size="sm", scale=1)
-
-            delete_status = gr.Textbox(label="Status", interactive=False)
-
-            # Connect history functions
-            load_btn.click(
-                load_conversation_by_id, [load_id_input], [chatbot, load_status]
+            gr.Markdown(
+                "Click on a conversation title to load it. Use the buttons to download or delete conversations."
             )
-            delete_btn.click(
-                delete_conversation_by_id,
-                [delete_id_input],
-                [history_display, delete_status],
+
+            # HTML-based conversation list with inline buttons
+            conversation_list_html = gr.HTML(generate_conversation_list_html())
+
+            with gr.Row():
+                refresh_btn = gr.Button("🔄 Refresh List", variant="secondary")
+
+            # Hidden textboxes for JavaScript to interact with
+            load_id_hidden = gr.Textbox(
+                visible=False,
+                placeholder="Conversation ID will be loaded here",
+            )
+            download_id_hidden = gr.Textbox(
+                visible=False,
+                placeholder="Conversation ID for download",
+            )
+            delete_id_hidden = gr.Textbox(
+                visible=False,
+                placeholder="Conversation ID for delete",
+            )
+
+            # Buttons triggered by JavaScript
+            with gr.Row(visible=False):
+                load_selected_btn = gr.Button("Load Selected")
+                download_json_btn = gr.Button("Download JSON")
+                delete_selected_btn = gr.Button("Delete Selected")
+
+            # Status and output
+            history_status = gr.Textbox(label="Status", interactive=False)
+
+            # File output for downloads
+            download_file = gr.File(label="Downloaded File", visible=True)
+
+            # Conversation details panel
+            with gr.Accordion("📄 Conversation Details", open=False):
+                conversation_details = gr.Markdown(
+                    "Click a conversation title to view details here."
+                )
+
+            # Connect functions
+            refresh_btn.click(
+                fn=generate_conversation_list_html,
+                inputs=None,
+                outputs=conversation_list_html,
+            )
+
+            # Load conversation when title is clicked (triggered by JavaScript)
+            load_selected_btn.click(
+                fn=load_conversation_and_refresh,
+                inputs=load_id_hidden,
+                outputs=[chatbot, conversation_details, history_status],
+            )
+
+            # Download conversation as JSON
+            download_json_btn.click(
+                fn=download_conversation_json,
+                inputs=download_id_hidden,
+                outputs=[download_file, history_status],
+            )
+
+            # Delete conversation
+            delete_selected_btn.click(
+                fn=delete_conversation_and_refresh,
+                inputs=delete_id_hidden,
+                outputs=[conversation_list_html, conversation_details, history_status],
             )
 
         # --- Tab 3: Sources ---
