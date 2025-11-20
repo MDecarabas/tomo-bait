@@ -12,7 +12,8 @@ from .storage import Conversation, get_storage
 # Load configuration
 config = get_config()
 BACKEND_URL = f"http://{config.server.backend_host}:{config.server.backend_port}/chat"
-DOCS_DIR = os.path.abspath(config.documentation.sphinx_build_html_path)
+sphinx_path = config.get_sphinx_build_html_path()
+DOCS_DIR = os.path.abspath(str(sphinx_path)) if sphinx_path else None
 
 # Storage
 storage = get_storage()
