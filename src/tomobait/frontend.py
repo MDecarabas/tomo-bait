@@ -736,6 +736,92 @@ def get_source_statuses():
     return "\n".join(statuses)
 
 
+def validate_resources_yaml(yaml_text):
+    """
+    Validate YAML syntax for resources.
+    Returns validation status message.
+    """
+    import yaml
+
+    try:
+        # Try to parse the YAML
+        parsed = yaml.safe_load(yaml_text)
+
+        if not parsed:
+            return "❌ Empty YAML"
+
+        if not isinstance(parsed, dict):
+            return "❌ YAML must be a dictionary/object"
+
+        if 'resources' not in parsed:
+            return "⚠️ Warning: No 'resources' key found at top level"
+
+        # Check if resources is a dict
+        resources = parsed['resources']
+        if not isinstance(resources, dict):
+            return "❌ 'resources' must be a dictionary"
+
+        # Count categories
+        category_count = len(resources)
+
+        return f"✅ Valid YAML - {category_count} resource categories found"
+
+    except yaml.YAMLError as e:
+        return f"❌ Invalid YAML syntax: {str(e)}"
+    except Exception as e:
+        return f"❌ Error: {str(e)}"
+
+
+def save_resources_config(yaml_text):
+    """
+    Save resources section to config.yaml.
+    Validates YAML before saving.
+    """
+    import yaml
+
+    try:
+        # Validate first
+        parsed = yaml.safe_load(yaml_text)
+
+        if not parsed or not isinstance(parsed, dict):
+            return "❌ Invalid YAML format"
+
+        if 'resources' not in parsed:
+            return "❌ YAML must contain 'resources' key at top level"
+
+        # Load current config
+        config = get_config()
+
+        # Update just the resources section
+        resources = parsed['resources']
+
+        # Save to config object
+        config_dict = config.model_dump()
+        config_dict['resources'] = resources
+
+        # Validate the full config
+        from .config import TomoBaitConfig
+        validated_config = TomoBaitConfig(**config_dict)
+
+        # Save to file
+        save_config(validated_config)
+
+        # Count what was saved
+        resource_count = 0
+        for category, items in resources.items():
+            if isinstance(items, dict):
+                resource_count += len(items)
+            elif isinstance(items, list):
+                resource_count += len(items)
+
+        return f"✅ Resources saved successfully! {len(resources)} categories, {resource_count} total entries. Re-ingest to update vector database."
+
+    except yaml.YAMLError as e:
+        return f"❌ YAML parsing error: {str(e)}"
+    except Exception as e:
+        return f"❌ Save failed: {str(e)}"
+
+
 def update_llm_fields_from_provider(provider):
     """
     Update LLM-related fields based on selected provider.
@@ -961,14 +1047,30 @@ with gr.Blocks(theme=gr.themes.Default(primary_hue="blue")) as demo:
 
             with gr.Accordion("📖 Reference Resources", open=False):
                 gr.Markdown(
-                    "These resources from config.yaml are embedded in the vector database. "
-                    "Edit config.yaml directly to modify."
+                    "**Edit resources** like beamlines, software packages, and organizations. "
+                    "These will be embedded in the vector database after re-ingestion."
                 )
-                sources_resources_display = gr.Code(
-                    label="Resources Configuration",
-                    language="yaml",
-                    interactive=False,
+                gr.Markdown(
+                    "*⚠️ Warning: Must be valid YAML format. Invalid YAML will cause errors.*"
+                )
+
+                sources_resources_editor = gr.Textbox(
+                    label="Resources Configuration (YAML)",
                     lines=20,
+                    interactive=True,
+                    placeholder="resources:\n  beamlines:\n    2bm:\n      name: ...",
+                    info="Edit YAML directly. Click 'Save Resources' to apply changes."
+                )
+
+                with gr.Row():
+                    save_resources_btn = gr.Button("💾 Save Resources", variant="primary")
+                    validate_resources_btn = gr.Button("✅ Validate YAML", size="sm", variant="secondary")
+
+                resources_validation_output = gr.Textbox(
+                    label="Validation Result",
+                    interactive=False,
+                    lines=2,
+                    visible=True
                 )
 
             sources_status = gr.Textbox(label="Status", interactive=False)
@@ -982,7 +1084,7 @@ with gr.Blocks(theme=gr.themes.Default(primary_hue="blue")) as demo:
                     sources_local_folders,
                     sources_docs_output,
                     sources_sphinx_html,
-                    sources_resources_display,
+                    sources_resources_editor,
                 ],
             )
 
@@ -1026,7 +1128,7 @@ with gr.Blocks(theme=gr.themes.Default(primary_hue="blue")) as demo:
                     sources_local_folders,
                     sources_docs_output,
                     sources_sphinx_html,
-                    sources_resources_display,
+                    sources_resources_editor,
                 ],
             ).then(
                 get_source_statuses,
@@ -1044,6 +1146,24 @@ with gr.Blocks(theme=gr.themes.Default(primary_hue="blue")) as demo:
                     sources_sphinx_html,
                 ],
                 sources_status,
+            )
+
+            # Connect validate resources button
+            validate_resources_btn.click(
+                validate_resources_yaml,
+                sources_resources_editor,
+                resources_validation_output
+            )
+
+            # Connect save resources button
+            save_resources_btn.click(
+                save_resources_config,
+                sources_resources_editor,
+                resources_validation_output
+            ).then(
+                get_sources_summary,
+                None,
+                sources_summary
             )
 
             # Connect re-ingest button
