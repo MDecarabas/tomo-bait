@@ -445,7 +445,7 @@ def load_config_values():
     provider = api_type_to_provider.get(config.llm.api_type, "gemini")
 
     return (
-        config.retriever.db_path,
+        str(config.get_db_path()),
         config.retriever.embedding_model,
         config.retriever.k,
         config.retriever.search_type,
@@ -471,11 +471,10 @@ def load_sources_values():
     config = get_config()
 
     # Format resources as YAML for display
-    config_dict = config.model_dump()
     resources_yaml = ""
-    if "resources" in config_dict:
+    if config.documentation.resources:
         resources_yaml = yaml.dump(
-            {"resources": config_dict["resources"]},
+            {"resources": config.documentation.resources},
             default_flow_style=False,
             sort_keys=False,
             indent=2
@@ -484,8 +483,8 @@ def load_sources_values():
     return (
         "\n".join(config.documentation.git_repos),
         "\n".join(config.documentation.local_folders),
-        config.documentation.docs_output_dir,
-        config.documentation.sphinx_build_html_path,
+        str(config.get_docs_output_dir()),
+        str(config.get_sphinx_build_html_path()) if config.get_sphinx_build_html_path() else "",
         resources_yaml,
     )
 
@@ -513,7 +512,7 @@ def save_config_values(
     config = get_config()
 
     # Update retriever settings
-    config.retriever.db_path = db_path
+    config.retriever.db_path = db_path  # Note: This sets the override, computed path from get_db_path()
     config.retriever.embedding_model = embedding_model
     config.retriever.k = k
     config.retriever.search_type = search_type
@@ -582,7 +581,7 @@ def check_vectordb_status():
         config = get_config()
         embeddings = HuggingFaceEmbeddings(model_name=config.retriever.embedding_model)
         vectorstore = Chroma(
-            persist_directory=config.retriever.db_path,
+            persist_directory=str(config.get_db_path()),
             embedding_function=embeddings
         )
         count = vectorstore._collection.count()
@@ -607,7 +606,7 @@ def run_data_ingestion():
 
     try:
         # Run the ingestion command
-        cmd = ["/home/raf/.pixi/bin/pixi", "run", "ingest"]
+        cmd = ["pixi", "run", "ingest"]
 
         process = subprocess.Popen(
             cmd,
@@ -648,9 +647,8 @@ def get_sources_summary():
 
     # Count resources
     resource_count = 0
-    if hasattr(config, 'resources'):
-        config_dict = config.model_dump()
-        resources = config_dict.get('resources', {})
+    if config.documentation.resources:
+        resources = config.documentation.resources
         for category, items in resources.items():
             if isinstance(items, dict):
                 resource_count += len(items)
@@ -664,7 +662,7 @@ def get_sources_summary():
 
         embeddings = HuggingFaceEmbeddings(model_name=config.retriever.embedding_model)
         vectorstore = Chroma(
-            persist_directory=config.retriever.db_path,
+            persist_directory=str(config.get_db_path()),
             embedding_function=embeddings
         )
         doc_count = vectorstore._collection.count()
@@ -684,7 +682,7 @@ def get_sources_summary():
 
 **Vector Database:**
 - Status: {db_status}
-- Location: `{config.retriever.db_path}`
+- Location: `{config.get_db_path()}`
 
 **Total Sources Configured:** {git_repo_count + local_folder_count + resource_count}
 """
@@ -723,9 +721,8 @@ def get_source_statuses():
 
     # Check resources
     try:
-        config_dict = config.model_dump()
-        if 'resources' in config_dict:
-            resource_categories = len(config_dict['resources'])
+        if config.documentation.resources:
+            resource_categories = len(config.documentation.resources)
             statuses.append(f"✅ Resources ({resource_categories} categories configured)")
     except:
         statuses.append("⚠️ Resources (could not verify)")
@@ -792,19 +789,14 @@ def save_resources_config(yaml_text):
         # Load current config
         config = get_config()
 
-        # Update just the resources section
+        # Update just the resources section (now under documentation)
         resources = parsed['resources']
 
         # Save to config object
-        config_dict = config.model_dump()
-        config_dict['resources'] = resources
-
-        # Validate the full config
-        from .config import TomoBaitConfig
-        validated_config = TomoBaitConfig(**config_dict)
+        config.documentation.resources = resources
 
         # Save to file
-        save_config(validated_config)
+        save_config(config)
 
         # Count what was saved
         resource_count = 0
