@@ -2,7 +2,6 @@
 Centralized configuration management for TomoBait.
 """
 
-import os
 from pathlib import Path
 from typing import Dict, List, Optional
 
