@@ -9,7 +9,6 @@ from pydantic import BaseModel
 
 from .config import backup_config, get_config, register_reload_callback, reload_config, save_config, TomoBaitConfig
 from .config_generator import generate_config_from_prompt, config_dict_to_yaml
-from .config_watcher import start_config_watcher
 from .retriever import get_documentation_retriever
 
 load_dotenv()
@@ -245,22 +244,6 @@ def run_agent_chat(user_question: str) -> str:
         print(final_answer)
         return final_answer
     return "Sorry, I couldn't find an answer."
-
-
-# --- Startup Event: Initialize Config Watcher ---
-@api.on_event("startup")
-async def startup_event():
-    """Initialize config file watcher on startup."""
-    def on_config_reload():
-        """Callback for config reload."""
-        print("🔄 Config reloaded in backend")
-        # Note: We reload config but don't recreate agents/retriever
-        # A full restart would be needed for those changes
-        reload_config()
-
-    # Start watching config file
-    start_config_watcher(callback=on_config_reload)
-    print("✅ Config watcher started")
 
 
 if __name__ == '__main__':

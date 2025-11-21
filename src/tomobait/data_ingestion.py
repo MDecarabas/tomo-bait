@@ -129,7 +129,6 @@ def load_chunk_embed(HTML_BUILD_DIR: str):
     print("🎉 All done!")
     print(f"Your knowledge base is ready and saved in '{db_path}'.")
 
-
 def create_resource_documents() -> List[Document]:
     """
     Convert resources from config.yaml into LangChain documents for embedding.
@@ -268,7 +267,6 @@ def create_resource_documents() -> List[Document]:
 
     print(f"✅ Created {len(documents)} resource documents")
     return documents
-
 
 def embed_resources():
     """

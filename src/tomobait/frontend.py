@@ -12,6 +12,7 @@ from .storage import Conversation, get_storage
 # Load configuration
 config = get_config()
 BACKEND_URL = f"http://{config.server.backend_host}:{config.server.backend_port}/chat"
+print(f"what am I looking at: {config.documentation.sphinx_build_html_path}")
 DOCS_DIR = os.path.abspath(config.documentation.sphinx_build_html_path)
 
 # Storage

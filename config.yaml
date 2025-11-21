@@ -7,8 +7,8 @@ documentation:
   git_repos:
   - https://github.com/xray-imaging/2bm-docs.git
   local_folders: []
-  docs_output_dir: null
-  sphinx_build_html_path: null
+  docs_output_dir: /Users/ecodrea/tomo-bait/tomo_documentation
+  sphinx_build_html_path: /Users/ecodrea/tomo-bait/tomo_documentation/2bm-docs/docs/_build/html
   resources:
     beamlines:
       2bm:
