@@ -2,7 +2,7 @@ project:
   name: tomo
   data_dir: .bait-tomo
 storage:
-  conversations_dir: null
+  conversations_dir: /Users/ecodrea/tomo-bait/conversations
 documentation:
   git_repos:
   - https://github.com/xray-imaging/2bm-docs.git

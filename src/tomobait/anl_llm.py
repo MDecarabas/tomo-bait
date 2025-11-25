@@ -5,8 +5,9 @@ This module provides a custom model client that translates between Autogen's
 OpenAI-compatible interface and ANL Argo's custom API format.
 """
 
-import requests
 from typing import Any, Dict, List, Optional
+
+import requests
 from autogen import ModelClient
 
 

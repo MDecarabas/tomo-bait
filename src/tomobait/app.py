@@ -1,15 +1,10 @@
-import os
-from typing import Annotated
 
-import autogen
-from autogen import LLMConfig
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from pydantic import BaseModel
 
-from .config import backup_config, get_config, save_config, TomoBaitConfig
-from .config_generator import generate_config_from_prompt, config_dict_to_yaml
 from .agents import run_agent_chat
+from .config import TomoBaitConfig, get_config
 
 load_dotenv()
 
@@ -27,10 +22,6 @@ class ConfigResponse(BaseModel):
 
 class GenerateConfigRequest(BaseModel):
     prompt: str
-
-class GenerateConfigResponse(BaseModel):
-    yaml_config: str
-    config_dict: dict
 
 @api.post("/chat")
 async def chat_endpoint(chat_query: ChatQuery):
@@ -55,41 +46,3 @@ async def update_config_endpoint(new_config: dict):
     # This is a placeholder - in production you'd want to validate and save
     return {"message": "Configuration updated. Restart backend to apply changes."}
 
-@api.post("/generate-config")
-async def generate_config_endpoint(request: GenerateConfigRequest):
-    """
-    Generate a configuration from natural language prompt using Gemini.
-    """
-    try:
-        # Generate config using Gemini
-        config_dict = generate_config_from_prompt(request.prompt)
-
-        # Convert to YAML
-        yaml_config = config_dict_to_yaml(config_dict)
-
-        return GenerateConfigResponse(
-            yaml_config=yaml_config,
-            config_dict=config_dict
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to generate config: {str(e)}")
-
-@api.post("/apply-config")
-async def apply_config_endpoint(new_config: dict):
-    """
-    Apply a new configuration after backing up the old one.
-    """
-    try:
-        # Backup current config
-        backup_path = backup_config()
-
-        # Validate and save new config
-        validated_config = TomoBaitConfig(**new_config)
-        save_config(validated_config)
-
-        return {
-            "message": "Configuration applied successfully!",
-            "backup_path": backup_path
-        }
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Invalid configuration: {str(e)}")

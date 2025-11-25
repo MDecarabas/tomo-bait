@@ -1,7 +1,6 @@
 import os
 import re
 from pathlib import Path
-from typing import List, Optional, Tuple
 
 import gradio as gr
 import requests

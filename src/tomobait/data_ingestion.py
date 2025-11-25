@@ -6,7 +6,7 @@ Sphinx documentation.
 import subprocess
 import sys
 from pathlib import Path
-from typing import Union, Dict, Any, List
+from typing import Any, Dict, List, Union
 
 from git import Repo
 from langchain_chroma import Chroma
