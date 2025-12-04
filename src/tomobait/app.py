@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 
 from .agents import run_agent_chat
-from .config import TomoBaitConfig, get_config
+from .config import get_config
 
 load_dotenv()
 
