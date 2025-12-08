@@ -81,7 +81,11 @@ class RetrieverConfig(BaseModel):
 class LLMConfig(BaseModel):
     """Configuration for the LLM and agents."""
 
-    api_key_env: str = Field(
+    api_key: Optional[str] = Field(
+        default=None,
+        description="API key (direct value, use for ANL Argo username or testing)",
+    )
+    api_key_env: Optional[str] = Field(
         default="GEMINI_API_KEY",
         description="Environment variable name containing the API key",
     )
