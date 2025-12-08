@@ -99,43 +99,47 @@ graph LR
 ### Prerequisites
 
 - Python 3.12
-- [Pixi](https://pixi.sh/) package manager
+- [uv](https://docs.astral.sh/uv/) package manager
 
 ### Installation
 
-1. **Clone the repository**
+1. **Install uv** (if not already installed)
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+2. **Clone the repository**
 ```bash
 git clone <repository-url>
 cd tomo-bait
 ```
 
-2. **Install dependencies**
+3. **Install dependencies**
 ```bash
-pixi install
-pixi run install
+uv sync
 ```
 
-3. **Set up environment variables**
+4. **Set up environment variables**
 ```bash
 cp .env.example .env
 # Edit .env and add your API key (GEMINI_API_KEY, OPENAI_API_KEY, etc.)
 ```
 
-4. **Ingest documentation** (first time only)
+5. **Ingest documentation** (first time only)
 ```bash
-pixi run ingest
+uv run ingest
 ```
 
-5. **Start the application**
+6. **Start the application**
 ```bash
 # Terminal 1: Start backend
-pixi run start-backend
+uv run start-backend
 
 # Terminal 2: Start frontend
-pixi run start-frontend
+uv run start-frontend
 ```
 
-6. **Access the UI**
+7. **Access the UI**
 
 Open your browser to `http://localhost:8000`
 
@@ -167,10 +171,12 @@ retriever:
   search_type:           # similarity, mmr, or similarity_score_threshold
 
 llm:
-  api_key_env:          # Environment variable name for API key
-  model:                # Model name (gemini-2.5-flash, gpt-4, etc.)
-  api_type:             # google, openai, azure, anthropic
-  system_message:       # System prompt for the agent
+  api_key:             # Direct API key (for ANL Argo, use your username)
+  api_key_env:         # Environment variable name for API key
+  model:               # Model name (gemini-2.5-flash, gpt-4, etc.)
+  api_type:            # google, openai, azure, anthropic
+  base_url:            # Custom base URL (for ANL Argo)
+  system_message:      # System prompt for the agent
 
 text_processing:
   chunk_size:           # Text chunk size (100-5000)
@@ -211,29 +217,29 @@ llm:
   api_type: anthropic
 ```
 
-**ANL Argo** (Internal LLM service)
+**ANL Argo** (OpenAI-Compatible Endpoint)
 ```yaml
 llm:
-  api_type: anl_argo
-  anl_api_url: https://your-anl-argo-endpoint/api/llm
-  anl_user: your_anl_username
-  anl_model: llama-2-70b
+  api_key: your_anl_username
+  model: gpt4o
+  api_type: openai
+  base_url: https://apps-dev.inside.anl.gov/argoapi/v1/
 ```
 
 ## 📋 Available Commands
 
 ```bash
 # Development
-pixi run start-backend   # Start FastAPI backend (port 8001)
-pixi run start-frontend  # Start Gradio frontend (port 8000)
-pixi run run-cli "query" # Run CLI interface
+uv run start-backend   # Start FastAPI backend (port 8001)
+uv run start-frontend  # Start Gradio frontend (port 8000)
+uv run run-cli "query" # Run CLI interface
 
 # Data Management
-pixi run ingest         # Ingest documentation into vector DB
+uv run ingest         # Ingest documentation into vector DB
 
 # Code Quality
-pixi run lint           # Check code style
-pixi run format         # Format code with ruff
+uv run lint           # Check code style
+uv run format         # Format code with ruff
 ```
 
 ## 🏛️ System Architecture
@@ -317,8 +323,8 @@ See `config.yaml` for the complete list with links.
 ### Development Workflow
 
 1. Make changes
-2. Run `pixi run format` to format code
-3. Run `pixi run lint` to check style
+2. Run `uv run format` to format code
+3. Run `uv run lint` to check style
 4. Test changes locally
 5. Commit and push
 
@@ -340,7 +346,7 @@ For detailed development guidance, see [CLAUDE.md](CLAUDE.md).
 
 ### Backend won't start
 - Check that `GEMINI_API_KEY` (or your chosen provider's key) is set in `.env`
-- Verify ChromaDB exists: run `pixi run ingest` if needed
+- Verify ChromaDB exists: run `uv run ingest` if needed
 
 ### Frontend can't connect
 - Ensure backend is running on port 8001
@@ -349,7 +355,7 @@ For detailed development guidance, see [CLAUDE.md](CLAUDE.md).
 ### No documents retrieved
 - Verify project data directory exists (e.g., `.bait-tomo/`)
 - Check ChromaDB path in config.yaml (defaults to `.bait-tomo/chroma_db`)
-- Re-run ingestion: `pixi run ingest`
+- Re-run ingestion: `uv run ingest`
 - Check that embedding model matches between ingestion and retrieval
 
 ## 📞 Support

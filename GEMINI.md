@@ -24,39 +24,39 @@ The system is composed of:
 
 ## Building and Running
 
-This project uses `pixi` for environment and task management.
+This project uses `uv` for fast package management and task execution.
 
 **Prerequisites:**
 
-*   `pixi` installed.
+*   `uv` installed (install with: `curl -LsSf https://astral.sh/uv/install.sh | sh`)
 *   An API key for your chosen LLM provider (e.g., `GEMINI_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`) set in `.env` file.
 
 **Key Commands (run from the project root):**
 
 *   **Install dependencies:**
     ```bash
-    pixi install
+    uv sync
     ```
 *   **Ingest documentation:**
     *This must be run before starting the application for the first time.*
     ```bash
-    pixi run ingest
+    uv run ingest
     ```
 *   **Run the application (backend and frontend):**
     1.  Start the backend:
         ```bash
-        pixi run start-backend
+        uv run start-backend
         ```
         The backend will be available at `http://127.0.0.1:8001`.
     2.  Start the frontend:
         ```bash
-        pixi run start-frontend
+        uv run start-frontend
         ```
         The frontend will be available at `http://127.0.0.1:8000`.
 
 *   **Run the CLI:**
     ```bash
-    pixi run run-cli "Your question here"
+    uv run run-cli "Your question here"
     ```
 
 ## Configuration
@@ -91,11 +91,11 @@ This ensures all project data is isolated and easy to manage.
 
 *   **Linting:** The project uses `ruff` for linting.
     ```bash
-    pixi run lint
+    uv run lint
     ```
 *   **Formatting:** The project uses `ruff` for formatting.
     ```bash
-    pixi run format
+    uv run format
     ```
 *   **Coding Style:**
     *   Line length: 88 characters

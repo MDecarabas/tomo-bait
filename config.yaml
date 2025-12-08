@@ -162,18 +162,16 @@ retriever:
   search_type: similarity
   score_threshold: null
 llm:
-  api_key_env: GEMINI_API_KEY
-  model: gemini-2.5-flash
-  api_type: google
+  api_key: ecodrea
+  model: gpt4o
+  api_type: openai
+  base_url: https://apps-dev.inside.anl.gov/argoapi/api/v1/resource/chat/
   system_message: 'You are an expert on this project''s documentation. When answering
     questions: 1. Answer based *only* on the context from your ''query_documentation''
     tool 2. Provide concise but complete responses (2-3 paragraphs) 3. For "how to"
     questions, provide step-by-step numbered instructions 4. Include relevant source
     links from the context (documentation URLs, GitHub, PyPI, etc.) 5. If the context
     is insufficient, say so. Do not make up answers.'
-  anl_api_url: null
-  anl_user: null
-  anl_model: null
 text_processing:
   chunk_size: 1000
   chunk_overlap: 200

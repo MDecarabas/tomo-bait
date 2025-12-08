@@ -8,13 +8,16 @@ TomoBait is a RAG (Retrieval-Augmented Generation) system for tomography beamlin
 
 ## Development Environment
 
-This project uses **Pixi** (not pip) for dependency management and task running. All commands should be run through Pixi tasks.
+This project uses **uv** for fast dependency management and task running. All commands should be run through uv.
 
 ### Initial Setup
 
 ```bash
-pixi install  # Install dependencies
-pixi run install  # Install package in editable mode
+# Install uv (if not already installed)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Install dependencies
+uv sync
 ```
 
 ## Common Commands
@@ -23,30 +26,30 @@ pixi run install  # Install package in editable mode
 
 ```bash
 # Start the FastAPI backend (port 8001)
-pixi run start-backend
+uv run start-backend
 
 # Start the Gradio frontend (port 8000)
-pixi run start-frontend
+uv run start-frontend
 
 # Run CLI interface
-pixi run run-cli "Your question here"
+uv run run-cli "Your question here"
 ```
 
 ### Code Quality
 
 ```bash
 # Check code style
-pixi run lint
+uv run lint
 
 # Format code
-pixi run format
+uv run format
 ```
 
 ### Data Ingestion
 
 ```bash
 # Ingest documentation (clones repo, builds Sphinx docs, creates vector DB)
-pixi run ingest
+uv run ingest
 ```
 
 ## Architecture
@@ -150,17 +153,22 @@ AZURE_OPENAI_API_KEY=your_azure_openai_api_key_here
 ```
 Get it from your Azure portal.
 
-### ANL Argo
-ANL Argo is an internal LLM service that doesn't require API keys. Instead, configure in `config.yaml`:
+### ANL Argo (OpenAI-Compatible Endpoint)
+ANL Argo provides an OpenAI-compatible API endpoint. Configure in `config.yaml`:
 ```yaml
 llm:
-  api_type: anl_argo
-  anl_api_url: https://your-anl-argo-endpoint/api/llm
-  anl_user: your_anl_username
-  anl_model: llama-2-70b
+  api_key: your_anl_username
+  model: gpt4o
+  api_type: openai
+  base_url: https://apps-dev.inside.anl.gov/argoapi/v1/
 ```
 
-Supported models: `llama-2-70b`, `mixtral-8x7b` (check with your ANL Argo administrator for available models)
+**Available Argo Models:**
+- **OpenAI**: `gpt4o`, `gpt4olatest`, `gpt4turbo`, `gpt41`, `gpt5`, `gpt5mini`
+- **Google**: `gemini25pro`, `gemini25flash`
+- **Anthropic**: `claudesonnet4`, `claudesonnet45`, `claudeopus4`, `claudeopus45`, `claudehaiku45`
+
+All models support tool/function calling (except o1-series reasoning models).
 
 **Note**: For standard providers, copy `.env.example` to `.env` and fill in your API key. The provider and model can be configured via the Configuration tab in the web interface or by editing `config.yaml`.
 

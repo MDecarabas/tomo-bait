@@ -310,7 +310,8 @@ def embed_resources():
 
     print("🎉 Resources embedded successfully!")
 
-if __name__ == "__main__":
+def main():
+    """Main entry point for data ingestion."""
     print("🚀 Starting data ingestion process...")
     print(f"Configuration loaded from config.yaml")
     print(f"Project: {config.project.name}")
@@ -342,3 +343,7 @@ if __name__ == "__main__":
 
     # Embed resources from config.yaml
     embed_resources()
+
+
+if __name__ == "__main__":
+    main()

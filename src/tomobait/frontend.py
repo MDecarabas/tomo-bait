@@ -10,8 +10,11 @@ from .storage import Conversation, get_storage
 
 # Load configuration
 config = get_config()
-BACKEND_URL = f"http://{config.server.backend_host}:{config.server.backend_port}/chat"
-DOCS_DIR = os.path.abspath(config.documentation.sphinx_build_html_path)
+BACKEND_BASE = f"http://{config.server.backend_host}:{config.server.backend_port}"
+BACKEND_URL = f"{BACKEND_BASE}/chat"
+HEALTH_URL = f"{BACKEND_BASE}/health"
+sphinx_path = config.get_sphinx_build_html_path()
+DOCS_DIR = os.path.abspath(str(sphinx_path)) if sphinx_path else None
 
 # Storage
 storage = get_storage()
@@ -85,6 +88,32 @@ def chat_func(message, history):
 
     try:
         response = requests.post(BACKEND_URL, json={"query": message})
+
+        # Handle specific error codes
+        if response.status_code == 503:
+            error_data = response.json().get("detail", {})
+            is_llm_error = (
+                isinstance(error_data, dict)
+                and error_data.get("error") == "llm_not_configured"
+            )
+            if is_llm_error:
+                # LLM not configured - give helpful message
+                hint = error_data.get("hint", "Check your API key configuration")
+                provider = error_data.get("provider", "unknown")
+                model = error_data.get("model", "unknown")
+                error_msg = (
+                    f"**LLM Not Configured**\n\n"
+                    f"The {provider}/{model} provider is not available.\n\n"
+                    f"**To fix this:**\n"
+                    f"- {hint}\n"
+                    f"- Or switch to a different provider in the Configuration tab"
+                )
+            else:
+                error_msg = "The AI service is overloaded. Please try again shortly."
+            history.append({"role": "user", "content": message})
+            history.append({"role": "assistant", "content": error_msg})
+            return history
+
         response.raise_for_status()
         agent_response = response.json().get("response", "No response from agent.")
 
@@ -100,7 +129,10 @@ def chat_func(message, history):
 
     except requests.exceptions.RequestException as e:
         history.append({"role": "user", "content": message})
-        history.append({"role": "assistant", "content": f"Error connecting to backend: {e}"})
+        history.append({
+            "role": "assistant",
+            "content": f"Error connecting to backend: {e}"
+        })
         return history
 
 
@@ -433,15 +465,18 @@ def load_config_values():
     """
     config = get_config()
 
-    # Determine provider from api_type
+    # Determine provider from api_type and base_url
     api_type_to_provider = {
         "google": "gemini",
         "openai": "openai",
         "azure": "azure",
         "anthropic": "anthropic",
-        "anl_argo": "anl_argo"
     }
-    provider = api_type_to_provider.get(config.llm.api_type, "gemini")
+    # Check if using Argo (OpenAI with Argo base_url)
+    if config.llm.base_url and "argoapi" in config.llm.base_url:
+        provider = "anl_argo"
+    else:
+        provider = api_type_to_provider.get(config.llm.api_type, "gemini")
 
     return (
         str(config.get_db_path()),
@@ -454,9 +489,7 @@ def load_config_values():
         config.llm.api_type,
         config.llm.model,
         config.llm.system_message,
-        config.llm.anl_api_url or "",
-        config.llm.anl_user or "",
-        config.llm.anl_model or "",
+        config.llm.base_url or "",
         config.text_processing.chunk_size,
         config.text_processing.chunk_overlap,
     )
@@ -499,9 +532,7 @@ def save_config_values(
     api_type,
     model,
     system_message,
-    anl_api_url,
-    anl_user,
-    anl_model,
+    base_url,
     chunk_size,
     chunk_overlap,
 ):
@@ -522,11 +553,7 @@ def save_config_values(
     config.llm.model = model
     config.llm.api_type = api_type
     config.llm.system_message = system_message
-
-    # Save ANL Argo fields
-    config.llm.anl_api_url = anl_api_url if anl_api_url else None
-    config.llm.anl_user = anl_user if anl_user else None
-    config.llm.anl_model = anl_model if anl_model else None
+    config.llm.base_url = base_url if base_url else None
 
     # Update text processing settings
     config.text_processing.chunk_size = chunk_size
@@ -605,7 +632,7 @@ def run_data_ingestion():
 
     try:
         # Run the ingestion command
-        cmd = ["pixi", "run", "ingest"]
+        cmd = ["uv", "run", "ingest"]
 
         process = subprocess.Popen(
             cmd,
@@ -816,46 +843,62 @@ def save_resources_config(yaml_text):
 def update_llm_fields_from_provider(provider):
     """
     Update LLM-related fields based on selected provider.
-    Returns: (model_choices, api_type, api_key_env, anl_settings_visibility)
+    Returns: (model_choices, api_type, api_key_env, base_url_visibility, base_url_value)
     """
+    # ANL Argo models available via OpenAI-compatible endpoint
+    argo_models = [
+        # OpenAI models
+        "gpt4o", "gpt4olatest", "gpt4turbo", "gpt41", "gpt5", "gpt5mini",
+        # Google models
+        "gemini25pro", "gemini25flash",
+        # Anthropic models
+        "claudesonnet4", "claudesonnet45", "claudeopus4", "claudeopus45", "claudehaiku45",
+    ]
+
     provider_config = {
         "gemini": {
             "models": ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"],
             "api_type": "google",
-            "api_key_env": "GEMINI_API_KEY"
+            "api_key_env": "GEMINI_API_KEY",
+            "base_url": "",
         },
         "openai": {
             "models": ["gpt-4", "gpt-4-turbo", "gpt-4o", "gpt-3.5-turbo"],
             "api_type": "openai",
-            "api_key_env": "OPENAI_API_KEY"
+            "api_key_env": "OPENAI_API_KEY",
+            "base_url": "",
         },
         "azure": {
             "models": ["gpt-4", "gpt-35-turbo"],
             "api_type": "azure",
-            "api_key_env": "AZURE_OPENAI_API_KEY"
+            "api_key_env": "AZURE_OPENAI_API_KEY",
+            "base_url": "",
         },
         "anthropic": {
             "models": ["claude-3-opus", "claude-3-sonnet", "claude-3-haiku"],
             "api_type": "anthropic",
-            "api_key_env": "ANTHROPIC_API_KEY"
+            "api_key_env": "ANTHROPIC_API_KEY",
+            "base_url": "",
         },
         "anl_argo": {
-            "models": ["llama-2-70b", "mixtral-8x7b"],
-            "api_type": "anl_argo",
-            "api_key_env": ""  # No API key needed for ANL Argo
+            "models": argo_models,
+            "api_type": "openai",  # Argo uses OpenAI-compatible API
+            "api_key_env": "",  # Use api_key directly in config for ANL Argo
+            "base_url": "https://apps-dev.inside.anl.gov/argoapi/v1/",
         }
     }
 
     config = provider_config.get(provider, provider_config["gemini"])
 
-    # Show ANL settings only for ANL Argo provider
-    anl_visible = (provider == "anl_argo")
+    # Show base_url settings for ANL Argo
+    base_url_visible = (provider == "anl_argo")
 
     return (
         gr.Dropdown(choices=config["models"], value=config["models"][0]),
         config["api_type"],
         config["api_key_env"],
-        gr.Group(visible=anl_visible)  # Show/hide ANL settings
+        gr.Group(visible=base_url_visible),  # Show/hide base_url settings
+        config["base_url"],  # Set base_url value
     )
 
 
@@ -1247,23 +1290,17 @@ with gr.Blocks(theme=gr.themes.Default(primary_hue="blue")) as demo:
                 )
                 system_msg = gr.Textbox(label="System Message", lines=5)
 
-                # ANL Argo specific settings (shown/hidden based on provider)
-                with gr.Group(visible=False) as anl_settings:
-                    gr.Markdown("### ANL Argo Configuration")
-                    anl_api_url = gr.Textbox(
-                        label="ANL API URL",
-                        placeholder="https://your-anl-argo-endpoint/api/llm",
-                        value="",
+                # Base URL settings (shown for ANL Argo and custom OpenAI-compatible endpoints)
+                with gr.Group(visible=False) as base_url_settings:
+                    gr.Markdown("### Custom API Endpoint")
+                    gr.Markdown(
+                        "*For ANL Argo, use: `https://apps-dev.inside.anl.gov/argoapi/v1/`*"
                     )
-                    anl_user = gr.Textbox(
-                        label="ANL Username",
-                        placeholder="your_anl_username",
+                    base_url = gr.Textbox(
+                        label="Base URL",
+                        placeholder="https://apps-dev.inside.anl.gov/argoapi/v1/",
                         value="",
-                    )
-                    anl_model = gr.Textbox(
-                        label="ANL Model Name",
-                        placeholder="llama-2-70b",
-                        value="",
+                        info="Custom base URL for OpenAI-compatible APIs (leave empty for default)",
                     )
 
             with gr.Accordion("✂️ Text Processing", open=False):
@@ -1281,7 +1318,7 @@ with gr.Blocks(theme=gr.themes.Default(primary_hue="blue")) as demo:
             provider.change(
                 update_llm_fields_from_provider,
                 inputs=[provider],
-                outputs=[llm_model, api_type, api_key_env, anl_settings],
+                outputs=[llm_model, api_type, api_key_env, base_url_settings, base_url],
             )
 
             # Load current config values on startup for Configuration tab
@@ -1299,9 +1336,7 @@ with gr.Blocks(theme=gr.themes.Default(primary_hue="blue")) as demo:
                     api_type,
                     llm_model,
                     system_msg,
-                    anl_api_url,
-                    anl_user,
-                    anl_model,
+                    base_url,
                     chunk_size,
                     chunk_overlap,
                 ],
@@ -1321,9 +1356,7 @@ with gr.Blocks(theme=gr.themes.Default(primary_hue="blue")) as demo:
                     api_type,
                     llm_model,
                     system_msg,
-                    anl_api_url,
-                    anl_user,
-                    anl_model,
+                    base_url,
                     chunk_size,
                     chunk_overlap,
                 ],

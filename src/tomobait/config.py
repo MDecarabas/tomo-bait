@@ -81,7 +81,11 @@ class RetrieverConfig(BaseModel):
 class LLMConfig(BaseModel):
     """Configuration for the LLM and agents."""
 
-    api_key_env: str = Field(
+    api_key: Optional[str] = Field(
+        default=None,
+        description="API key (direct value, for ANL Argo use your ANL username)",
+    )
+    api_key_env: Optional[str] = Field(
         default="GEMINI_API_KEY",
         description="Environment variable name containing the API key",
     )
@@ -89,6 +93,10 @@ class LLMConfig(BaseModel):
         default="gemini-2.5-flash", description="Model name (e.g., gemini-2.5-flash)"
     )
     api_type: str = Field(default="google", description="API type (google, openai, etc.)")
+    base_url: Optional[str] = Field(
+        default=None,
+        description="Custom base URL for OpenAI-compatible APIs (e.g., ANL Argo: https://apps-dev.inside.anl.gov/argoapi/v1/)",
+    )
     system_message: str = Field(
         default=(
             "You are an expert on this project's documentation. "
@@ -98,20 +106,6 @@ class LLMConfig(BaseModel):
             "If the context is not sufficient, say so. Do not make up answers."
         ),
         description="System message for the documentation expert agent",
-    )
-
-    # ANL Argo specific configuration
-    anl_api_url: Optional[str] = Field(
-        default=None,
-        description="ANL Argo API endpoint URL (only for api_type='anl_argo')",
-    )
-    anl_user: Optional[str] = Field(
-        default=None,
-        description="ANL username for API requests (only for api_type='anl_argo')",
-    )
-    anl_model: Optional[str] = Field(
-        default=None,
-        description="ANL model name (only for api_type='anl_argo')",
     )
 
 
