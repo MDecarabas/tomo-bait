@@ -162,11 +162,10 @@ retriever:
   search_type: similarity
   score_threshold: null
 llm:
-  api_key_env: GEMINI_API_KEY
-  model: gemini-2.5-flash
-  api_type: google
-  # base_url for OpenAI-compatible APIs (e.g., ANL Argo: https://apps-dev.inside.anl.gov/argoapi/v1/)
-  base_url: null
+  api_key_env: ANL_USER
+  model: gpt4o
+  api_type: openai
+  base_url: https://apps-dev.inside.anl.gov/argoapi/api/v1/resource/chat/
   system_message: 'You are an expert on this project''s documentation. When answering
     questions: 1. Answer based *only* on the context from your ''query_documentation''
     tool 2. Provide concise but complete responses (2-3 paragraphs) 3. For "how to"

@@ -215,14 +215,15 @@ llm:
   api_type: anthropic
 ```
 
-**ANL Argo** (Internal LLM service)
+**ANL Argo** (OpenAI-Compatible Endpoint)
 ```yaml
 llm:
-  api_type: anl_argo
-  anl_api_url: https://your-anl-argo-endpoint/api/llm
-  anl_user: your_anl_username
-  anl_model: llama-2-70b
+  api_type: openai
+  api_key_env: ANL_USER
+  model: gpt4o
+  base_url: https://apps-dev.inside.anl.gov/argoapi/v1/
 ```
+Then set `export ANL_USER=your_anl_username`.
 
 ## 📋 Available Commands
 

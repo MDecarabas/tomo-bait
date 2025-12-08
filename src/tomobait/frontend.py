@@ -10,7 +10,9 @@ from .storage import Conversation, get_storage
 
 # Load configuration
 config = get_config()
-BACKEND_URL = f"http://{config.server.backend_host}:{config.server.backend_port}/chat"
+BACKEND_BASE = f"http://{config.server.backend_host}:{config.server.backend_port}"
+BACKEND_URL = f"{BACKEND_BASE}/chat"
+HEALTH_URL = f"{BACKEND_BASE}/health"
 sphinx_path = config.get_sphinx_build_html_path()
 DOCS_DIR = os.path.abspath(str(sphinx_path)) if sphinx_path else None
 
@@ -86,6 +88,32 @@ def chat_func(message, history):
 
     try:
         response = requests.post(BACKEND_URL, json={"query": message})
+
+        # Handle specific error codes
+        if response.status_code == 503:
+            error_data = response.json().get("detail", {})
+            is_llm_error = (
+                isinstance(error_data, dict)
+                and error_data.get("error") == "llm_not_configured"
+            )
+            if is_llm_error:
+                # LLM not configured - give helpful message
+                hint = error_data.get("hint", "Check your API key configuration")
+                provider = error_data.get("provider", "unknown")
+                model = error_data.get("model", "unknown")
+                error_msg = (
+                    f"**LLM Not Configured**\n\n"
+                    f"The {provider}/{model} provider is not available.\n\n"
+                    f"**To fix this:**\n"
+                    f"- {hint}\n"
+                    f"- Or switch to a different provider in the Configuration tab"
+                )
+            else:
+                error_msg = "The AI service is overloaded. Please try again shortly."
+            history.append({"role": "user", "content": message})
+            history.append({"role": "assistant", "content": error_msg})
+            return history
+
         response.raise_for_status()
         agent_response = response.json().get("response", "No response from agent.")
 
@@ -101,7 +129,10 @@ def chat_func(message, history):
 
     except requests.exceptions.RequestException as e:
         history.append({"role": "user", "content": message})
-        history.append({"role": "assistant", "content": f"Error connecting to backend: {e}"})
+        history.append({
+            "role": "assistant",
+            "content": f"Error connecting to backend: {e}"
+        })
         return history
 
 
