@@ -157,15 +157,10 @@ Get it from your Azure portal.
 ANL Argo provides an OpenAI-compatible API endpoint. Configure in `config.yaml`:
 ```yaml
 llm:
+  api_key: your_anl_username
+  model: gpt4o
   api_type: openai
-  api_key_env: ANL_USER  # Environment variable containing your ANL username
-  model: gpt4o  # Argo model name (see available models below)
   base_url: https://apps-dev.inside.anl.gov/argoapi/v1/
-```
-
-Then set your ANL username as an environment variable:
-```bash
-export ANL_USER=your_anl_username
 ```
 
 **Available Argo Models:**

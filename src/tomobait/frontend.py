@@ -883,7 +883,7 @@ def update_llm_fields_from_provider(provider):
         "anl_argo": {
             "models": argo_models,
             "api_type": "openai",  # Argo uses OpenAI-compatible API
-            "api_key_env": "ANL_USER",  # ANL username as API key
+            "api_key_env": "",  # Use api_key directly in config for ANL Argo
             "base_url": "https://apps-dev.inside.anl.gov/argoapi/v1/",
         }
     }

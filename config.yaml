@@ -163,7 +163,6 @@ retriever:
   score_threshold: null
 llm:
   api_key: ecodrea
-  api_key_env: null
   model: gpt4o
   api_type: openai
   base_url: https://apps-dev.inside.anl.gov/argoapi/api/v1/resource/chat/

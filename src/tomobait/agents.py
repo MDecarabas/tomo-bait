@@ -57,7 +57,7 @@ class AgentManager:
         Returns: (is_available, api_key, error_message)
 
         Checks in order:
-        1. Direct api_key in config (for ANL Argo username or testing)
+        1. Direct api_key in config (for ANL Argo username)
         2. Environment variable from api_key_env
         """
         config = get_config()
@@ -69,7 +69,7 @@ class AgentManager:
         # Then check environment variable
         api_key_env = config.llm.api_key_env
         if not api_key_env:
-            return False, None, "No api_key or api_key_env configured in config.yaml"
+            return False, None, "No api_key or api_key_env configured"
 
         api_key = os.getenv(api_key_env)
         if not api_key:

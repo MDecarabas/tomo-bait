@@ -171,10 +171,12 @@ retriever:
   search_type:           # similarity, mmr, or similarity_score_threshold
 
 llm:
-  api_key_env:          # Environment variable name for API key
-  model:                # Model name (gemini-2.5-flash, gpt-4, etc.)
-  api_type:             # google, openai, azure, anthropic
-  system_message:       # System prompt for the agent
+  api_key:             # Direct API key (for ANL Argo, use your username)
+  api_key_env:         # Environment variable name for API key
+  model:               # Model name (gemini-2.5-flash, gpt-4, etc.)
+  api_type:            # google, openai, azure, anthropic
+  base_url:            # Custom base URL (for ANL Argo)
+  system_message:      # System prompt for the agent
 
 text_processing:
   chunk_size:           # Text chunk size (100-5000)
@@ -218,12 +220,11 @@ llm:
 **ANL Argo** (OpenAI-Compatible Endpoint)
 ```yaml
 llm:
-  api_type: openai
-  api_key_env: ANL_USER
+  api_key: your_anl_username
   model: gpt4o
+  api_type: openai
   base_url: https://apps-dev.inside.anl.gov/argoapi/v1/
 ```
-Then set `export ANL_USER=your_anl_username`.
 
 ## 📋 Available Commands
 

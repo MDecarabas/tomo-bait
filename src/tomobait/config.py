@@ -83,7 +83,7 @@ class LLMConfig(BaseModel):
 
     api_key: Optional[str] = Field(
         default=None,
-        description="API key (direct value, use for ANL Argo username or testing)",
+        description="API key (direct value, for ANL Argo use your ANL username)",
     )
     api_key_env: Optional[str] = Field(
         default="GEMINI_API_KEY",
