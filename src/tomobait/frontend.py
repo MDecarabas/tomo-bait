@@ -1,7 +1,6 @@
 import os
 import re
 from pathlib import Path
-from typing import List, Optional, Tuple
 
 import gradio as gr
 import requests
@@ -435,15 +434,18 @@ def load_config_values():
     """
     config = get_config()
 
-    # Determine provider from api_type
+    # Determine provider from api_type and base_url
     api_type_to_provider = {
         "google": "gemini",
         "openai": "openai",
         "azure": "azure",
         "anthropic": "anthropic",
-        "anl_argo": "anl_argo"
     }
-    provider = api_type_to_provider.get(config.llm.api_type, "gemini")
+    # Check if using Argo (OpenAI with Argo base_url)
+    if config.llm.base_url and "argoapi" in config.llm.base_url:
+        provider = "anl_argo"
+    else:
+        provider = api_type_to_provider.get(config.llm.api_type, "gemini")
 
     return (
         str(config.get_db_path()),
@@ -456,9 +458,7 @@ def load_config_values():
         config.llm.api_type,
         config.llm.model,
         config.llm.system_message,
-        config.llm.anl_api_url or "",
-        config.llm.anl_user or "",
-        config.llm.anl_model or "",
+        config.llm.base_url or "",
         config.text_processing.chunk_size,
         config.text_processing.chunk_overlap,
     )
@@ -501,9 +501,7 @@ def save_config_values(
     api_type,
     model,
     system_message,
-    anl_api_url,
-    anl_user,
-    anl_model,
+    base_url,
     chunk_size,
     chunk_overlap,
 ):
@@ -524,11 +522,7 @@ def save_config_values(
     config.llm.model = model
     config.llm.api_type = api_type
     config.llm.system_message = system_message
-
-    # Save ANL Argo fields
-    config.llm.anl_api_url = anl_api_url if anl_api_url else None
-    config.llm.anl_user = anl_user if anl_user else None
-    config.llm.anl_model = anl_model if anl_model else None
+    config.llm.base_url = base_url if base_url else None
 
     # Update text processing settings
     config.text_processing.chunk_size = chunk_size
@@ -607,7 +601,7 @@ def run_data_ingestion():
 
     try:
         # Run the ingestion command
-        cmd = ["pixi", "run", "ingest"]
+        cmd = ["uv", "run", "ingest"]
 
         process = subprocess.Popen(
             cmd,
@@ -818,46 +812,62 @@ def save_resources_config(yaml_text):
 def update_llm_fields_from_provider(provider):
     """
     Update LLM-related fields based on selected provider.
-    Returns: (model_choices, api_type, api_key_env, anl_settings_visibility)
+    Returns: (model_choices, api_type, api_key_env, base_url_visibility, base_url_value)
     """
+    # ANL Argo models available via OpenAI-compatible endpoint
+    argo_models = [
+        # OpenAI models
+        "gpt4o", "gpt4olatest", "gpt4turbo", "gpt41", "gpt5", "gpt5mini",
+        # Google models
+        "gemini25pro", "gemini25flash",
+        # Anthropic models
+        "claudesonnet4", "claudesonnet45", "claudeopus4", "claudeopus45", "claudehaiku45",
+    ]
+
     provider_config = {
         "gemini": {
             "models": ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"],
             "api_type": "google",
-            "api_key_env": "GEMINI_API_KEY"
+            "api_key_env": "GEMINI_API_KEY",
+            "base_url": "",
         },
         "openai": {
             "models": ["gpt-4", "gpt-4-turbo", "gpt-4o", "gpt-3.5-turbo"],
             "api_type": "openai",
-            "api_key_env": "OPENAI_API_KEY"
+            "api_key_env": "OPENAI_API_KEY",
+            "base_url": "",
         },
         "azure": {
             "models": ["gpt-4", "gpt-35-turbo"],
             "api_type": "azure",
-            "api_key_env": "AZURE_OPENAI_API_KEY"
+            "api_key_env": "AZURE_OPENAI_API_KEY",
+            "base_url": "",
         },
         "anthropic": {
             "models": ["claude-3-opus", "claude-3-sonnet", "claude-3-haiku"],
             "api_type": "anthropic",
-            "api_key_env": "ANTHROPIC_API_KEY"
+            "api_key_env": "ANTHROPIC_API_KEY",
+            "base_url": "",
         },
         "anl_argo": {
-            "models": ["llama-2-70b", "mixtral-8x7b"],
-            "api_type": "anl_argo",
-            "api_key_env": ""  # No API key needed for ANL Argo
+            "models": argo_models,
+            "api_type": "openai",  # Argo uses OpenAI-compatible API
+            "api_key_env": "ANL_USER",  # ANL username as API key
+            "base_url": "https://apps-dev.inside.anl.gov/argoapi/v1/",
         }
     }
 
     config = provider_config.get(provider, provider_config["gemini"])
 
-    # Show ANL settings only for ANL Argo provider
-    anl_visible = (provider == "anl_argo")
+    # Show base_url settings for ANL Argo
+    base_url_visible = (provider == "anl_argo")
 
     return (
         gr.Dropdown(choices=config["models"], value=config["models"][0]),
         config["api_type"],
         config["api_key_env"],
-        gr.Group(visible=anl_visible)  # Show/hide ANL settings
+        gr.Group(visible=base_url_visible),  # Show/hide base_url settings
+        config["base_url"],  # Set base_url value
     )
 
 
@@ -1249,23 +1259,17 @@ with gr.Blocks(theme=gr.themes.Default(primary_hue="blue")) as demo:
                 )
                 system_msg = gr.Textbox(label="System Message", lines=5)
 
-                # ANL Argo specific settings (shown/hidden based on provider)
-                with gr.Group(visible=False) as anl_settings:
-                    gr.Markdown("### ANL Argo Configuration")
-                    anl_api_url = gr.Textbox(
-                        label="ANL API URL",
-                        placeholder="https://your-anl-argo-endpoint/api/llm",
-                        value="",
+                # Base URL settings (shown for ANL Argo and custom OpenAI-compatible endpoints)
+                with gr.Group(visible=False) as base_url_settings:
+                    gr.Markdown("### Custom API Endpoint")
+                    gr.Markdown(
+                        "*For ANL Argo, use: `https://apps-dev.inside.anl.gov/argoapi/v1/`*"
                     )
-                    anl_user = gr.Textbox(
-                        label="ANL Username",
-                        placeholder="your_anl_username",
+                    base_url = gr.Textbox(
+                        label="Base URL",
+                        placeholder="https://apps-dev.inside.anl.gov/argoapi/v1/",
                         value="",
-                    )
-                    anl_model = gr.Textbox(
-                        label="ANL Model Name",
-                        placeholder="llama-2-70b",
-                        value="",
+                        info="Custom base URL for OpenAI-compatible APIs (leave empty for default)",
                     )
 
             with gr.Accordion("✂️ Text Processing", open=False):
@@ -1283,7 +1287,7 @@ with gr.Blocks(theme=gr.themes.Default(primary_hue="blue")) as demo:
             provider.change(
                 update_llm_fields_from_provider,
                 inputs=[provider],
-                outputs=[llm_model, api_type, api_key_env, anl_settings],
+                outputs=[llm_model, api_type, api_key_env, base_url_settings, base_url],
             )
 
             # Load current config values on startup for Configuration tab
@@ -1301,9 +1305,7 @@ with gr.Blocks(theme=gr.themes.Default(primary_hue="blue")) as demo:
                     api_type,
                     llm_model,
                     system_msg,
-                    anl_api_url,
-                    anl_user,
-                    anl_model,
+                    base_url,
                     chunk_size,
                     chunk_overlap,
                 ],
@@ -1323,130 +1325,12 @@ with gr.Blocks(theme=gr.themes.Default(primary_hue="blue")) as demo:
                     api_type,
                     llm_model,
                     system_msg,
-                    anl_api_url,
-                    anl_user,
-                    anl_model,
+                    base_url,
                     chunk_size,
                     chunk_overlap,
                 ],
                 config_status,
             )
-
-        # --- Tab 4: Setup (AI Config Generator) ---
-        with gr.Tab("Setup"):
-            gr.Markdown("## AI-Powered Configuration Generator")
-            gr.Markdown(
-                "Describe your configuration needs in natural language, and AI will generate a config for you."
-            )
-
-            with gr.Row():
-                with gr.Column(scale=1):
-                    gr.Markdown("### Describe Your Needs")
-                    user_prompt = gr.Textbox(
-                        label="Configuration Prompt",
-                        lines=8,
-                        placeholder=(
-                            "Example: I want to index local documentation in /data/tomo "
-                            "with high accuracy retrieval. I need 5 documents per query and "
-                            "want to use smaller chunks for better precision."
-                        ),
-                    )
-
-                    gr.Markdown("**Example prompts:**")
-                    gr.Markdown(
-                        "- *Index GitHub repo https://github.com/user/docs with default settings*\n"
-                        "- *High-speed setup with 2 retrieval docs and large chunks*\n"
-                        "- *Index multiple local folders: /data/tomo1, /data/tomo2, /data/tomo3*"
-                    )
-
-                    generate_btn = gr.Button(
-                        "🤖 Generate Configuration", variant="primary", size="lg"
-                    )
-                    gen_status = gr.Textbox(label="Status", interactive=False)
-
-                with gr.Column(scale=1):
-                    gr.Markdown("### Generated Configuration Preview")
-                    generated_yaml = gr.Code(
-                        label="YAML Preview",
-                        language="yaml",
-                        lines=20,
-                        interactive=True,
-                    )
-
-                    with gr.Row():
-                        apply_btn = gr.Button("✅ Apply Configuration", variant="primary")
-                        cancel_btn = gr.Button("❌ Cancel")
-
-                    apply_status = gr.Textbox(label="Apply Status", interactive=False)
-
-            # Functions for Setup tab
-            def generate_config_ui(prompt):
-                """Generate config from user prompt."""
-                if not prompt or not prompt.strip():
-                    return "", "Please provide a configuration prompt"
-
-                try:
-                    # Call backend to generate config
-                    response = requests.post(
-                        f"http://{config.server.backend_host}:{config.server.backend_port}/generate-config",
-                        json={"prompt": prompt},
-                    )
-                    response.raise_for_status()
-
-                    result = response.json()
-                    yaml_config = result["yaml_config"]
-
-                    return yaml_config, "✅ Configuration generated successfully! Review and click Apply."
-
-                except requests.exceptions.RequestException as e:
-                    return "", f"❌ Error: {str(e)}"
-                except Exception as e:
-                    return "", f"❌ Unexpected error: {str(e)}"
-
-            def apply_generated_config(yaml_str):
-                """Apply the generated configuration."""
-                if not yaml_str or not yaml_str.strip():
-                    return "No configuration to apply"
-
-                try:
-                    # Parse YAML
-                    import yaml
-
-                    config_dict = yaml.safe_load(yaml_str)
-
-                    # Send to backend to apply
-                    response = requests.post(
-                        f"http://{config.server.backend_host}:{config.server.backend_port}/apply-config",
-                        json=config_dict,
-                    )
-                    response.raise_for_status()
-
-                    result = response.json()
-                    backup_path = result.get("backup_path", "")
-
-                    return (
-                        f"✅ Configuration applied successfully!\n"
-                        f"Backup saved to: {backup_path}\n"
-                        f"Backend will reload automatically."
-                    )
-
-                except yaml.YAMLError as e:
-                    return f"❌ Invalid YAML: {str(e)}"
-                except requests.exceptions.RequestException as e:
-                    return f"❌ Error applying config: {str(e)}"
-                except Exception as e:
-                    return f"❌ Unexpected error: {str(e)}"
-
-            def clear_generated():
-                """Clear the generated config."""
-                return "", "Cancelled"
-
-            # Connect Setup tab functions
-            generate_btn.click(
-                generate_config_ui, [user_prompt], [generated_yaml, gen_status]
-            )
-            apply_btn.click(apply_generated_config, [generated_yaml], apply_status)
-            cancel_btn.click(clear_generated, None, [generated_yaml, apply_status])
 
 if __name__ == "__main__":
     demo.launch(

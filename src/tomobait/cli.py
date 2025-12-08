@@ -1,6 +1,6 @@
 import argparse
 
-from tomobait.app import run_agent_chat
+from tomobait.agents import run_agent_chat
 
 
 def main():

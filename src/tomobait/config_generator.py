@@ -11,7 +11,6 @@ from google.genai import types
 
 from .config import TomoBaitConfig
 
-
 # System prompt for config generation
 SYSTEM_PROMPT = """You are a configuration generator for TomoBait, a RAG system for tomography beamline documentation.
 

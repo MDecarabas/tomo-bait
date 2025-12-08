@@ -2,7 +2,6 @@
 Centralized configuration management for TomoBait.
 """
 
-import os
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -90,6 +89,10 @@ class LLMConfig(BaseModel):
         default="gemini-2.5-flash", description="Model name (e.g., gemini-2.5-flash)"
     )
     api_type: str = Field(default="google", description="API type (google, openai, etc.)")
+    base_url: Optional[str] = Field(
+        default=None,
+        description="Custom base URL for OpenAI-compatible APIs (e.g., ANL Argo: https://apps-dev.inside.anl.gov/argoapi/v1/)",
+    )
     system_message: str = Field(
         default=(
             "You are an expert on this project's documentation. "
@@ -99,20 +102,6 @@ class LLMConfig(BaseModel):
             "If the context is not sufficient, say so. Do not make up answers."
         ),
         description="System message for the documentation expert agent",
-    )
-
-    # ANL Argo specific configuration
-    anl_api_url: Optional[str] = Field(
-        default=None,
-        description="ANL Argo API endpoint URL (only for api_type='anl_argo')",
-    )
-    anl_user: Optional[str] = Field(
-        default=None,
-        description="ANL username for API requests (only for api_type='anl_argo')",
-    )
-    anl_model: Optional[str] = Field(
-        default=None,
-        description="ANL model name (only for api_type='anl_argo')",
     )
 
 

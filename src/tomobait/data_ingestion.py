@@ -6,7 +6,7 @@ Sphinx documentation.
 import subprocess
 import sys
 from pathlib import Path
-from typing import Union, Dict, Any, List
+from typing import Any, Dict, List, Union
 
 from git import Repo
 from langchain_chroma import Chroma
@@ -128,7 +128,6 @@ def load_chunk_embed(HTML_BUILD_DIR: str):
 
     print("🎉 All done!")
     print(f"Your knowledge base is ready and saved in '{db_path}'.")
-
 
 def create_resource_documents() -> List[Document]:
     """
@@ -269,7 +268,6 @@ def create_resource_documents() -> List[Document]:
     print(f"✅ Created {len(documents)} resource documents")
     return documents
 
-
 def embed_resources():
     """
     Embed resource documents from config.yaml into the vector store.
@@ -312,7 +310,8 @@ def embed_resources():
 
     print("🎉 Resources embedded successfully!")
 
-if __name__ == "__main__":
+def main():
+    """Main entry point for data ingestion."""
     print("🚀 Starting data ingestion process...")
     print(f"Configuration loaded from config.yaml")
     print(f"Project: {config.project.name}")
@@ -344,3 +343,7 @@ if __name__ == "__main__":
 
     # Embed resources from config.yaml
     embed_resources()
+
+
+if __name__ == "__main__":
+    main()

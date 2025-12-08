@@ -8,18 +8,59 @@ version = "0.1.0"
 authors = [
   { name="mdecarabas", email="codrea.eric@gmail.com" },
 ]
-description = "A Python package for ... (add a short description)"
+description = "A RAG system for tomography beamline documentation"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12,<3.13"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
+]
+dependencies = [
+    "ag2[gemini,mcp]",
+    "sentence-transformers>=2.7.0",
+    "langchain-community>=0.4.1,<0.5",
+    "langchain-chroma>=1.0.0,<2",
+    "langchain-huggingface>=1.0.1,<2",
+    "langchain-text-splitters>=1.0.0,<2",
+    "google-generativeai>=0.8.5,<0.9",
+    "google-genai>=1.49.0,<2",
+    "fastapi",
+    "uvicorn>=0.29.0,<0.30",
+    "gradio",
+    "requests",
+    "pyyaml",
+    "watchdog",
+    "gitpython>=3.1.45,<4",
+    "sphinx>=7.0,<9",
+    "sphinx-rtd-theme>=2.0,<4",
+    "sphinxcontrib-bibtex>=2.6.5,<3",
+    "nbsphinx>=0.9.7,<0.10",
+    "pybtex>=0.25.1,<0.26",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff",
+    "pytest",
+    "pytest-timeout",
 ]
 
 [project.urls]
 "Homepage" = "https://github.com/mdecarabas/tomo-bait"
 "Bug Tracker" = "https://github.com/mdecarabas/tomo-bait/issues"
 
+[project.scripts]
+start-backend = "tomobait.scripts:start_backend"
+start-frontend = "tomobait.scripts:start_frontend"
+run-cli = "tomobait.cli:main"
+ingest = "tomobait.data_ingestion:main"
+lint = "tomobait.scripts:lint"
+format = "tomobait.scripts:format_code"
+
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.ruff]
+line-length = 88
+select = ["E", "F", "I"]

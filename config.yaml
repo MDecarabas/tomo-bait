@@ -2,13 +2,13 @@ project:
   name: tomo
   data_dir: .bait-tomo
 storage:
-  conversations_dir: null
+  conversations_dir: /Users/ecodrea/tomo-bait/conversations
 documentation:
   git_repos:
   - https://github.com/xray-imaging/2bm-docs.git
   local_folders: []
-  docs_output_dir: null
-  sphinx_build_html_path: null
+  docs_output_dir: /Users/ecodrea/tomo-bait/tomo_documentation
+  sphinx_build_html_path: /Users/ecodrea/tomo-bait/tomo_documentation/2bm-docs/docs/_build/html
   resources:
     beamlines:
       2bm:
@@ -165,15 +165,14 @@ llm:
   api_key_env: GEMINI_API_KEY
   model: gemini-2.5-flash
   api_type: google
+  # base_url for OpenAI-compatible APIs (e.g., ANL Argo: https://apps-dev.inside.anl.gov/argoapi/v1/)
+  base_url: null
   system_message: 'You are an expert on this project''s documentation. When answering
     questions: 1. Answer based *only* on the context from your ''query_documentation''
     tool 2. Provide concise but complete responses (2-3 paragraphs) 3. For "how to"
     questions, provide step-by-step numbered instructions 4. Include relevant source
     links from the context (documentation URLs, GitHub, PyPI, etc.) 5. If the context
     is insufficient, say so. Do not make up answers.'
-  anl_api_url: null
-  anl_user: null
-  anl_model: null
 text_processing:
   chunk_size: 1000
   chunk_overlap: 200
