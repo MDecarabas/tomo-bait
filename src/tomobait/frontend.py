@@ -602,6 +602,7 @@ def check_vectordb_status():
     try:
         from langchain_chroma import Chroma
         from langchain_huggingface import HuggingFaceEmbeddings
+
         from .config import get_config
 
         config = get_config()
