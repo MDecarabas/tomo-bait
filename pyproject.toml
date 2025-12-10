@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=61.0", "uv"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -37,6 +37,7 @@ dependencies = [
     "sphinxcontrib-bibtex>=2.6.5,<3",
     "nbsphinx>=0.9.7,<0.10",
     "pybtex>=0.25.1,<0.26",
+    "rank-bm25>=0.2.2",
 ]
 
 [project.optional-dependencies]

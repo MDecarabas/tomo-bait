@@ -9,7 +9,9 @@ def start_backend():
     """Start the FastAPI backend server."""
     # Set PYTHONPATH to include src directory
     env = os.environ.copy()
-    src_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "src")
+    src_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "src"
+    )
     env["PYTHONPATH"] = src_path
 
     # Start uvicorn with reload
@@ -23,7 +25,9 @@ def start_frontend():
     """Start the Gradio frontend."""
     # Set PYTHONPATH to include src directory
     env = os.environ.copy()
-    src_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "src")
+    src_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "src"
+    )
     env["PYTHONPATH"] = src_path
 
     # Run frontend module

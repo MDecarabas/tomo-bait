@@ -4,7 +4,7 @@ Configuration file watcher for hot-reloading.
 
 import time
 from pathlib import Path
-from threading import Thread, Event
+from threading import Event
 from typing import Callable, Optional
 
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
@@ -14,7 +14,9 @@ from watchdog.observers import Observer
 class ConfigFileHandler(FileSystemEventHandler):
     """Handler for config file changes."""
 
-    def __init__(self, config_path: Path, callback: Callable, debounce_seconds: float = 0.5):
+    def __init__(
+        self, config_path: Path, callback: Callable, debounce_seconds: float = 0.5
+    ):
         self.config_path = config_path.resolve()
         self.callback = callback
         self.debounce_seconds = debounce_seconds
@@ -63,7 +65,9 @@ class ConfigFileHandler(FileSystemEventHandler):
 class ConfigWatcher:
     """Watches config file for changes and triggers reload."""
 
-    def __init__(self, config_path: str = "config.yaml", callback: Optional[Callable] = None):
+    def __init__(
+        self, config_path: str = "config.yaml", callback: Optional[Callable] = None
+    ):
         self.config_path = Path(config_path).resolve()
         self.callback = callback
         self.observer: Optional[Observer] = None
@@ -78,7 +82,9 @@ class ConfigWatcher:
         # Watch the directory containing the config file
         watch_dir = self.config_path.parent
 
-        event_handler = ConfigFileHandler(self.config_path, self.callback or self._default_callback)
+        event_handler = ConfigFileHandler(
+            self.config_path, self.callback or self._default_callback
+        )
 
         self.observer = Observer()
         self.observer.schedule(event_handler, str(watch_dir), recursive=False)
@@ -117,7 +123,9 @@ class ConfigWatcher:
 _watcher: Optional[ConfigWatcher] = None
 
 
-def start_config_watcher(config_path: str = "config.yaml", callback: Optional[Callable] = None):
+def start_config_watcher(
+    config_path: str = "config.yaml", callback: Optional[Callable] = None
+):
     """Start the global config watcher."""
     global _watcher
 

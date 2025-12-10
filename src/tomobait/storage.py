@@ -69,7 +69,9 @@ class Conversation(BaseModel):
 
     @classmethod
     def from_gradio_history(
-        cls, history: List[Tuple[Optional[str], Optional[str]]], title: Optional[str] = None
+        cls,
+        history: List[Tuple[Optional[str], Optional[str]]],
+        title: Optional[str] = None,
     ) -> "Conversation":
         """
         Create a conversation from Gradio chatbot history format.
@@ -114,6 +116,7 @@ class ConversationStorage:
         if storage_dir is None:
             # Import here to avoid circular dependency
             from .config import get_config
+
             config = get_config()
             self.storage_dir = config.get_conversations_dir()
         else:

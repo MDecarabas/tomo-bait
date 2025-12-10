@@ -4,9 +4,11 @@ from pathlib import Path
 
 import gradio as gr
 import requests
+import yaml
 
 from .config import get_config, save_config
 from .storage import Conversation, get_storage
+
 
 # Load configuration
 config = get_config()
@@ -129,10 +131,9 @@ def chat_func(message, history):
 
     except requests.exceptions.RequestException as e:
         history.append({"role": "user", "content": message})
-        history.append({
-            "role": "assistant",
-            "content": f"Error connecting to backend: {e}"
-        })
+        history.append(
+            {"role": "assistant", "content": f"Error connecting to backend: {e}"}
+        )
         return history
 
 
@@ -213,7 +214,8 @@ def generate_conversation_list_html():
     try:
         conversations = storage.list_all()
     except Exception as e:
-        return f"<p style='color: #d32f2f; padding: 20px;'>Error loading conversations: {str(e)}</p>"
+        return f"""<p style='color: #d32f2f; padding: 20px;'>
+Error loading conversations: {str(e)}</p>"""
 
     if not conversations:
         return "<p style='color: #666; padding: 20px;'>No saved conversations</p>"
@@ -280,16 +282,18 @@ def generate_conversation_list_html():
     """
 
     for conv in conversations:
-        conv_id = conv['id']
-        title = conv['title']
-        message_count = conv['message_count']
-        updated = conv['updated_at'][:19].replace('T', ' ')
-        preview = conv['preview'][:80] + ('...' if len(conv['preview']) > 80 else '')
+        conv_id = conv["id"]
+        title = conv["title"]
+        message_count = conv["message_count"]
+        updated = conv["updated_at"][:19].replace("T", " ")
+        preview = conv["preview"][:80] + ("..." if len(conv["preview"]) > 80 else "")
 
         html += f"""
         <tr class="conv-row">
             <td>
-                <div class="conv-title" onclick="loadConversation('{conv_id}')">{title}</div>
+                <div class="conv-title" onclick="loadConversation('{conv_id}')">
+                    {title}
+                </div>
                 <div class="conv-meta">
                     {message_count} messages • Updated: {updated}
                     <br/>
@@ -297,8 +301,18 @@ def generate_conversation_list_html():
                 </div>
             </td>
             <td class="conv-actions">
-                <button class="conv-btn download" onclick="downloadConversation('{conv_id}')">📥 Download</button>
-                <button class="conv-btn delete" onclick="deleteConversation('{conv_id}')">🗑️ Delete</button>
+                <button 
+                    class="conv-btn download" 
+                    onclick="downloadConversation('{conv_id}')"
+                >
+                    📥 Download
+                </button>
+                <button 
+                    class="conv-btn delete" 
+                    onclick="deleteConversation('{conv_id}')"
+                >
+                    🗑️ Delete
+                </button>
             </td>
         </tr>
         """
@@ -308,9 +322,14 @@ def generate_conversation_list_html():
     <script>
         function loadConversation(convId) {
             // Find the load button and input field
-            const loadInput = document.querySelector('input[placeholder*="will be loaded"]');
-            const loadBtn = document.querySelector('button:has-text("Load Selected")') ||
-                           Array.from(document.querySelectorAll('button')).find(b => b.textContent.includes('Load'));
+            const loadInput = document.querySelector(
+                'input[placeholder*="will be loaded"]'
+            );
+            const loadBtn = 
+                document.querySelector('button:has-text("Load Selected")') ||
+                Array.from(document.querySelectorAll('button')).find(
+                    b => b.textContent.includes('Load')
+                );
 
             if (loadInput) {
                 loadInput.value = convId;
@@ -319,9 +338,15 @@ def generate_conversation_list_html():
         }
 
         function downloadConversation(convId) {
-            const downloadInput = document.querySelector('input[placeholder*="download"]');
-            const downloadBtn = Array.from(document.querySelectorAll('button')).find(b =>
-                b.textContent.includes('Download') && b.textContent.includes('JSON'));
+            const downloadInput = document.querySelector(
+                'input[placeholder*="download"]'
+            );
+            const downloadBtn = Array.from(
+                document.querySelectorAll('button')
+            ).find(
+                b => b.textContent.includes('Download') && 
+                     b.textContent.includes('JSON')
+            );
 
             if (downloadInput && downloadBtn) {
                 downloadInput.value = convId;
@@ -332,13 +357,21 @@ def generate_conversation_list_html():
 
         function deleteConversation(convId) {
             if (confirm('Are you sure you want to delete this conversation?')) {
-                const deleteInput = document.querySelector('input[placeholder*="delete"]');
-                const deleteBtn = Array.from(document.querySelectorAll('button')).find(b =>
-                    b.textContent.includes('Delete') && b.textContent.includes('Selected'));
+                const deleteInput = document.querySelector(
+                    'input[placeholder*="delete"]'
+                );
+                const deleteBtn = Array.from(
+                    document.querySelectorAll('button')
+                ).find(
+                    b => b.textContent.includes('Delete') && 
+                         b.textContent.includes('Selected')
+                );
 
                 if (deleteInput && deleteBtn) {
                     deleteInput.value = convId;
-                    deleteInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    deleteInput.dispatchEvent(
+                        new Event('input', { bubbles: true })
+                    );
                     setTimeout(() => deleteBtn.click(), 100);
                 }
             }
@@ -369,7 +402,7 @@ def show_conversation_details(conv_id: str):
         f"**Messages:** {len(conv.messages)}",
         "",
         "---",
-        ""
+        "",
     ]
 
     for i, msg in enumerate(conv.messages, 1):
@@ -408,7 +441,7 @@ def download_conversation_json(conv_id: str):
 
     # Convert to dict and save
     conv_dict = conv.model_dump()
-    with open(filepath, 'w', encoding='utf-8') as f:
+    with open(filepath, "w", encoding="utf-8") as f:
         json.dump(conv_dict, f, indent=2, ensure_ascii=False)
 
     return str(filepath), f"Downloaded: {filename}"
@@ -423,20 +456,20 @@ def delete_conversation_and_refresh(conv_id: str):
 
     conv = storage.load(conv_id.strip())
     if not conv:
-        return generate_conversation_list_html(), "", f"Conversation not found: {conv_id}"
-
-    title = conv.title
-    if storage.delete(conv_id.strip()):
         return (
             generate_conversation_list_html(),
             "",
-            f"✅ Deleted: {title}"
+            f"Conversation not found: {conv_id}",
         )
+
+    title = conv.title
+    if storage.delete(conv_id.strip()):
+        return (generate_conversation_list_html(), "", f"✅ Deleted: {title}")
     else:
         return (
             generate_conversation_list_html(),
             "",
-            f"❌ Failed to delete: {conv_id}"
+            f"❌ Failed to delete: {conv_id}",
         )
 
 
@@ -499,7 +532,6 @@ def load_sources_values():
     """
     Load documentation sources values for Sources tab.
     """
-    import yaml
     config = get_config()
 
     # Format resources as YAML for display
@@ -509,14 +541,16 @@ def load_sources_values():
             {"resources": config.documentation.resources},
             default_flow_style=False,
             sort_keys=False,
-            indent=2
+            indent=2,
         )
 
     return (
         "\n".join(config.documentation.git_repos),
         "\n".join(config.documentation.local_folders),
         str(config.get_docs_output_dir()),
-        str(config.get_sphinx_build_html_path()) if config.get_sphinx_build_html_path() else "",
+        str(config.get_sphinx_build_html_path())
+        if config.get_sphinx_build_html_path()
+        else "",
         resources_yaml,
     )
 
@@ -542,7 +576,9 @@ def save_config_values(
     config = get_config()
 
     # Update retriever settings
-    config.retriever.db_path = db_path  # Note: This sets the override, computed path from get_db_path()
+    config.retriever.db_path = (
+        db_path  # Note: This sets the override, computed path from get_db_path()
+    )
     config.retriever.embedding_model = embedding_model
     config.retriever.k = k
     config.retriever.search_type = search_type
@@ -607,17 +643,14 @@ def check_vectordb_status():
         config = get_config()
         embeddings = HuggingFaceEmbeddings(model_name=config.retriever.embedding_model)
         vectorstore = Chroma(
-            persist_directory=str(config.get_db_path()),
-            embedding_function=embeddings
+            persist_directory=str(config.get_db_path()), embedding_function=embeddings
         )
         count = vectorstore._collection.count()
 
         if count == 0:
             return "⚠️ Empty - No documents indexed. Please run ingestion."
-        else:
-            return f"✅ Ready - {count} documents indexed"
-    except Exception as e:
-        return f"❌ Error: {str(e)}"
+    except Exception:
+        return "❌ Error: Could not connect to vector database"
 
 
 def run_data_ingestion():
@@ -639,7 +672,7 @@ def run_data_ingestion():
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
-            cwd=os.getcwd()
+            cwd=os.getcwd(),
         )
 
         output = ""
@@ -654,7 +687,9 @@ def run_data_ingestion():
             status = check_vectordb_status()
             yield output + f"\n\n✅ Ingestion completed successfully!\n{status}"
         else:
-            yield output + f"\n\n❌ Ingestion failed with exit code {process.returncode}"
+            yield (
+                output + f"\n\n❌ Ingestion failed with exit code {process.returncode}"
+            )
 
     except Exception as e:
         yield f"❌ Error running ingestion: {str(e)}"
@@ -688,12 +723,11 @@ def get_sources_summary():
 
         embeddings = HuggingFaceEmbeddings(model_name=config.retriever.embedding_model)
         vectorstore = Chroma(
-            persist_directory=str(config.get_db_path()),
-            embedding_function=embeddings
+            persist_directory=str(config.get_db_path()), embedding_function=embeddings
         )
         doc_count = vectorstore._collection.count()
         db_status = f"✅ {doc_count} documents"
-    except Exception as e:
+    except Exception:
         doc_count = 0
         db_status = "❌ Not available"
 
@@ -725,7 +759,7 @@ def get_source_statuses():
 
     # Check git repos
     for repo_url in config.documentation.git_repos:
-        repo_name = repo_url.split('/')[-1].replace('.git', '')
+        repo_name = repo_url.split("/")[-1].replace(".git", "")
         repo_path = Path(config.documentation.docs_output_dir) / repo_name
 
         if repo_path.exists():
@@ -749,8 +783,10 @@ def get_source_statuses():
     try:
         if config.documentation.resources:
             resource_categories = len(config.documentation.resources)
-            statuses.append(f"✅ Resources ({resource_categories} categories configured)")
-    except:
+            statuses.append(
+                f"✅ Resources ({resource_categories} categories configured)"
+            )
+    except Exception:
         statuses.append("⚠️ Resources (could not verify)")
 
     if not statuses:
@@ -764,8 +800,6 @@ def validate_resources_yaml(yaml_text):
     Validate YAML syntax for resources.
     Returns validation status message.
     """
-    import yaml
-
     try:
         # Try to parse the YAML
         parsed = yaml.safe_load(yaml_text)
@@ -776,11 +810,11 @@ def validate_resources_yaml(yaml_text):
         if not isinstance(parsed, dict):
             return "❌ YAML must be a dictionary/object"
 
-        if 'resources' not in parsed:
+        if "resources" not in parsed:
             return "⚠️ Warning: No 'resources' key found at top level"
 
         # Check if resources is a dict
-        resources = parsed['resources']
+        resources = parsed["resources"]
         if not isinstance(resources, dict):
             return "❌ 'resources' must be a dictionary"
 
@@ -800,8 +834,6 @@ def save_resources_config(yaml_text):
     Save resources section to config.yaml.
     Validates YAML before saving.
     """
-    import yaml
-
     try:
         # Validate first
         parsed = yaml.safe_load(yaml_text)
@@ -809,14 +841,14 @@ def save_resources_config(yaml_text):
         if not parsed or not isinstance(parsed, dict):
             return "❌ Invalid YAML format"
 
-        if 'resources' not in parsed:
+        if "resources" not in parsed:
             return "❌ YAML must contain 'resources' key at top level"
 
         # Load current config
         config = get_config()
 
         # Update just the resources section (now under documentation)
-        resources = parsed['resources']
+        resources = parsed["resources"]
 
         # Save to config object
         config.documentation.resources = resources
@@ -832,7 +864,11 @@ def save_resources_config(yaml_text):
             elif isinstance(items, list):
                 resource_count += len(items)
 
-        return f"✅ Resources saved successfully! {len(resources)} categories, {resource_count} total entries. Re-ingest to update vector database."
+        return (
+            f"✅ Resources saved successfully! {len(resources)} categories, "
+            f"{resource_count} total entries. Re-ingest to "
+            f"update vector database."
+        )
 
     except yaml.YAMLError as e:
         return f"❌ YAML parsing error: {str(e)}"
@@ -843,16 +879,27 @@ def save_resources_config(yaml_text):
 def update_llm_fields_from_provider(provider):
     """
     Update LLM-related fields based on selected provider.
-    Returns: (model_choices, api_type, api_key_env, base_url_visibility, base_url_value)
+    Returns:
+    (model_choices, api_type, api_key_env, base_url_visibility, base_url_value)
     """
     # ANL Argo models available via OpenAI-compatible endpoint
     argo_models = [
         # OpenAI models
-        "gpt4o", "gpt4olatest", "gpt4turbo", "gpt41", "gpt5", "gpt5mini",
+        "gpt4o",
+        "gpt4olatest",
+        "gpt4turbo",
+        "gpt41",
+        "gpt5",
+        "gpt5mini",
         # Google models
-        "gemini25pro", "gemini25flash",
+        "gemini25pro",
+        "gemini25flash",
         # Anthropic models
-        "claudesonnet4", "claudesonnet45", "claudeopus4", "claudeopus45", "claudehaiku45",
+        "claudesonnet4",
+        "claudesonnet45",
+        "claudeopus4",
+        "claudeopus45",
+        "claudehaiku45",
     ]
 
     provider_config = {
@@ -885,13 +932,13 @@ def update_llm_fields_from_provider(provider):
             "api_type": "openai",  # Argo uses OpenAI-compatible API
             "api_key_env": "",  # Use api_key directly in config for ANL Argo
             "base_url": "https://apps-dev.inside.anl.gov/argoapi/v1/",
-        }
+        },
     }
 
     config = provider_config.get(provider, provider_config["gemini"])
 
     # Show base_url settings for ANL Argo
-    base_url_visible = (provider == "anl_argo")
+    base_url_visible = provider == "anl_argo"
 
     return (
         gr.Dropdown(choices=config["models"], value=config["models"][0]),
@@ -940,7 +987,8 @@ with gr.Blocks(theme=gr.themes.Default(primary_hue="blue")) as demo:
         with gr.Tab("History"):
             gr.Markdown("## Saved Conversations")
             gr.Markdown(
-                "Click on a conversation title to load it. Use the buttons to download or delete conversations."
+                "Click on a conversation title to load it. "
+                "Use the buttons to download or delete conversations."
             )
 
             # HTML-based conversation list with inline buttons
@@ -1013,43 +1061,52 @@ with gr.Blocks(theme=gr.themes.Default(primary_hue="blue")) as demo:
         with gr.Tab("Sources"):
             gr.Markdown("## Documentation Sources")
             gr.Markdown(
-                "Manage documentation sources and run ingestion to update the vector database."
+                "Manage documentation sources and run ingestion to "
+                "update the vector database."
             )
 
             # Summary Panel
             sources_summary = gr.Markdown(value="Loading sources overview...")
 
             with gr.Row():
-                summary_refresh_btn = gr.Button("🔄 Refresh Overview", size="sm", variant="secondary")
+                summary_refresh_btn = gr.Button(
+                    "🔄 Refresh Overview", size="sm", variant="secondary"
+                )
 
             with gr.Accordion("📚 Documentation Sources", open=True):
                 gr.Markdown(
-                    "*Configure where documentation should be loaded from. Git repositories will be "
-                    "automatically cloned and built. Local folders should point to pre-built HTML documentation.*"
+                    "*Configure where documentation should be loaded from. "
+                    "Git repositories will be automatically cloned and built. "
+                    "Local folders should point to pre-built HTML documentation.*"
                 )
 
                 with gr.Row():
-                    sources_refresh_btn = gr.Button("🔄 Refresh Values", size="sm", variant="secondary")
+                    sources_refresh_btn = gr.Button(
+                        "🔄 Refresh Values", size="sm", variant="secondary"
+                    )
 
                 sources_git_repos = gr.Textbox(
                     label="Git Repositories (one per line)",
                     lines=3,
                     placeholder="https://github.com/xray-imaging/2bm-docs.git",
-                    info="Repository URLs will be cloned to the documentation output directory"
+                    info=(
+                        "Repository URLs will be cloned to the "
+                        "documentation output directory"
+                    ),
                 )
                 sources_local_folders = gr.Textbox(
                     label="Local Folders (one per line)",
                     lines=3,
                     placeholder="/path/to/built/docs",
-                    info="Paths to pre-built HTML documentation directories"
+                    info="Paths to pre-built HTML documentation directories",
                 )
                 sources_docs_output = gr.Textbox(
                     label="Documentation Output Directory",
-                    info="Where cloned git repositories will be stored"
+                    info="Where cloned git repositories will be stored",
                 )
                 sources_sphinx_html = gr.Textbox(
                     label="Sphinx HTML Build Path",
-                    info="Path to built Sphinx HTML files that will be indexed"
+                    info="Path to built Sphinx HTML files that will be indexed",
                 )
 
                 # Source Status Display
@@ -1058,7 +1115,7 @@ with gr.Blocks(theme=gr.themes.Default(primary_hue="blue")) as demo:
                     label="Per-Source Status",
                     lines=5,
                     interactive=False,
-                    value="Loading status..."
+                    value="Loading status...",
                 )
 
             with gr.Accordion("🔄 Vector Database & Ingestion", open=True):
@@ -1081,11 +1138,13 @@ with gr.Blocks(theme=gr.themes.Default(primary_hue="blue")) as demo:
 
             with gr.Accordion("📖 Reference Resources", open=False):
                 gr.Markdown(
-                    "**Edit resources** like beamlines, software packages, and organizations. "
-                    "These will be embedded in the vector database after re-ingestion."
+                    "**Edit resources** like beamlines, software packages, and "
+                    "organizations. These will be embedded in the vector "
+                    "database after re-ingestion."
                 )
                 gr.Markdown(
-                    "*⚠️ Warning: Must be valid YAML format. Invalid YAML will cause errors.*"
+                    "*⚠️ Warning: Must be valid YAML format. "
+                    "Invalid YAML will cause errors.*"
                 )
 
                 sources_resources_editor = gr.Textbox(
@@ -1093,18 +1152,19 @@ with gr.Blocks(theme=gr.themes.Default(primary_hue="blue")) as demo:
                     lines=20,
                     interactive=True,
                     placeholder="resources:\n  beamlines:\n    2bm:\n      name: ...",
-                    info="Edit YAML directly. Click 'Save Resources' to apply changes."
+                    info="Edit YAML directly. Click 'Save Resources' to apply changes.",
                 )
 
                 with gr.Row():
-                    save_resources_btn = gr.Button("💾 Save Resources", variant="primary")
-                    validate_resources_btn = gr.Button("✅ Validate YAML", size="sm", variant="secondary")
+                    save_resources_btn = gr.Button(
+                        "💾 Save Resources", variant="primary"
+                    )
+                    validate_resources_btn = gr.Button(
+                        "✅ Validate YAML", size="sm", variant="secondary"
+                    )
 
                 resources_validation_output = gr.Textbox(
-                    label="Validation Result",
-                    interactive=False,
-                    lines=2,
-                    visible=True
+                    label="Validation Result", interactive=False, lines=2, visible=True
                 )
 
             sources_status = gr.Textbox(label="Status", interactive=False)
@@ -1123,34 +1183,16 @@ with gr.Blocks(theme=gr.themes.Default(primary_hue="blue")) as demo:
             )
 
             # Load initial summary and status
-            demo.load(
-                get_sources_summary,
-                None,
-                sources_summary
-            )
+            demo.load(get_sources_summary, None, sources_summary)
 
-            demo.load(
-                get_source_statuses,
-                None,
-                sources_status_display
-            )
+            demo.load(get_source_statuses, None, sources_status_display)
 
             # Load initial ingestion status
-            demo.load(
-                check_vectordb_status,
-                None,
-                sources_ingest_status
-            )
+            demo.load(check_vectordb_status, None, sources_ingest_status)
 
             # Connect summary refresh button
-            summary_refresh_btn.click(
-                get_sources_summary,
-                None,
-                sources_summary
-            ).then(
-                get_source_statuses,
-                None,
-                sources_status_display
+            summary_refresh_btn.click(get_sources_summary, None, sources_summary).then(
+                get_source_statuses, None, sources_status_display
             )
 
             # Connect source values refresh button
@@ -1164,11 +1206,7 @@ with gr.Blocks(theme=gr.themes.Default(primary_hue="blue")) as demo:
                     sources_sphinx_html,
                     sources_resources_editor,
                 ],
-            ).then(
-                get_source_statuses,
-                None,
-                sources_status_display
-            )
+            ).then(get_source_statuses, None, sources_status_display)
 
             # Connect save sources button
             save_sources_btn.click(
@@ -1186,37 +1224,21 @@ with gr.Blocks(theme=gr.themes.Default(primary_hue="blue")) as demo:
             validate_resources_btn.click(
                 validate_resources_yaml,
                 sources_resources_editor,
-                resources_validation_output
+                resources_validation_output,
             )
 
             # Connect save resources button
             save_resources_btn.click(
                 save_resources_config,
                 sources_resources_editor,
-                resources_validation_output
-            ).then(
-                get_sources_summary,
-                None,
-                sources_summary
-            )
+                resources_validation_output,
+            ).then(get_sources_summary, None, sources_summary)
 
             # Connect re-ingest button
-            reingest_btn.click(
-                run_data_ingestion,
-                None,
-                sources_ingest_output
-            ).then(
-                check_vectordb_status,
-                None,
-                sources_ingest_status
-            ).then(
-                get_sources_summary,
-                None,
-                sources_summary
-            ).then(
-                get_source_statuses,
-                None,
-                sources_status_display
+            reingest_btn.click(run_data_ingestion, None, sources_ingest_output).then(
+                check_vectordb_status, None, sources_ingest_status
+            ).then(get_sources_summary, None, sources_summary).then(
+                get_source_statuses, None, sources_status_display
             )
 
         # --- Tab 4: Configuration ---
@@ -1259,7 +1281,12 @@ with gr.Blocks(theme=gr.themes.Default(primary_hue="blue")) as demo:
                 )
                 api_key_env = gr.Dropdown(
                     label="API Key Environment Variable",
-                    choices=["GEMINI_API_KEY", "OPENAI_API_KEY", "AZURE_OPENAI_API_KEY", "ANTHROPIC_API_KEY"],
+                    choices=[
+                        "GEMINI_API_KEY",
+                        "OPENAI_API_KEY",
+                        "AZURE_OPENAI_API_KEY",
+                        "ANTHROPIC_API_KEY",
+                    ],
                     value="GEMINI_API_KEY",
                     allow_custom_value=True,
                 )
@@ -1290,17 +1317,22 @@ with gr.Blocks(theme=gr.themes.Default(primary_hue="blue")) as demo:
                 )
                 system_msg = gr.Textbox(label="System Message", lines=5)
 
-                # Base URL settings (shown for ANL Argo and custom OpenAI-compatible endpoints)
+                # Base URL settings (shown for ANL Argo and custom
+                # OpenAI-compatible endpoints)
                 with gr.Group(visible=False) as base_url_settings:
                     gr.Markdown("### Custom API Endpoint")
                     gr.Markdown(
-                        "*For ANL Argo, use: `https://apps-dev.inside.anl.gov/argoapi/v1/`*"
+                        "*For ANL Argo, use: "
+                        "`https://apps-dev.inside.anl.gov/argoapi/v1/`*"
                     )
                     base_url = gr.Textbox(
                         label="Base URL",
                         placeholder="https://apps-dev.inside.anl.gov/argoapi/v1/",
                         value="",
-                        info="Custom base URL for OpenAI-compatible APIs (leave empty for default)",
+                        info=(
+                            "Custom base URL for OpenAI-compatible APIs "
+                            "(leave empty for default)"
+                        ),
                     )
 
             with gr.Accordion("✂️ Text Processing", open=False):

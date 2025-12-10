@@ -27,7 +27,9 @@ class StorageConfig(BaseModel):
 
     conversations_dir: Optional[str] = Field(
         default=None,
-        description="Directory for conversation storage (defaults to {data_dir}/conversations)",
+        description=(
+            "Directory for conversation storage (defaults to {data_dir}/conversations)"
+        ),
     )
 
 
@@ -43,11 +45,17 @@ class DocumentationSourceConfig(BaseModel):
     )
     docs_output_dir: Optional[str] = Field(
         default=None,
-        description="Directory where documentation will be stored (defaults to {data_dir}/documentation)",
+        description=(
+            "Directory where documentation will be stored "
+            "(defaults to {data_dir}/documentation)"
+        ),
     )
     sphinx_build_html_path: Optional[str] = Field(
         default=None,
-        description="Path to built Sphinx HTML documentation (defaults to {data_dir}/documentation/repos/*/docs/_build/html)",
+        description=(
+            "Path to built Sphinx HTML documentation "
+            "(defaults to {data_dir}/documentation/repos/*/docs/_build/html)"
+        ),
     )
     resources: Optional[Dict] = Field(
         default=None,
@@ -74,7 +82,10 @@ class RetrieverConfig(BaseModel):
         description="Search type: similarity, mmr, or similarity_score_threshold",
     )
     score_threshold: Optional[float] = Field(
-        default=None, description="Minimum relevance score (for similarity_score_threshold)", ge=0.0, le=1.0
+        default=None,
+        description="Minimum relevance score (for similarity_score_threshold)",
+        ge=0.0,
+        le=1.0,
     )
 
 
@@ -92,7 +103,9 @@ class LLMConfig(BaseModel):
     model: str = Field(
         default="gemini-2.5-flash", description="Model name (e.g., gemini-2.5-flash)"
     )
-    api_type: str = Field(default="google", description="API type (google, openai, etc.)")
+    api_type: str = Field(
+        default="google", description="API type (google, openai, etc.)"
+    )
     base_url: Optional[str] = Field(
         default=None,
         description="Custom base URL for OpenAI-compatible APIs (e.g., ANL Argo: https://apps-dev.inside.anl.gov/argoapi/v1/)",
@@ -129,6 +142,26 @@ class ServerConfig(BaseModel):
     frontend_port: int = Field(default=8000, description="Frontend server port")
 
 
+class AgentConfigModel(BaseModel):
+    """Configuration for a single agent"""
+
+    name: str
+    type: str = "assistant"  # 'assistant' or 'user_proxy'
+    system_message: str
+    description: str = ""
+    enabled: bool = True
+    max_consecutive_auto_reply: int = 10
+    human_input_mode: str = "NEVER"
+    code_execution_config: bool = False
+
+
+class AgentsConfig(BaseModel):
+    """Configuration for all agents"""
+
+    agents: List[AgentConfigModel] = Field(default_factory=list)
+    default_workflow: str = "sequential"  # 'sequential', 'parallel', 'hierarchical'
+
+
 class TomoBaitConfig(BaseModel):
     """Main configuration for TomoBait application."""
 
@@ -141,6 +174,7 @@ class TomoBaitConfig(BaseModel):
     llm: LLMConfig = Field(default_factory=LLMConfig)
     text_processing: TextProcessingConfig = Field(default_factory=TextProcessingConfig)
     server: ServerConfig = Field(default_factory=ServerConfig)
+    agents: Optional[AgentsConfig] = None
 
     def get_data_dir(self) -> Path:
         """Get the resolved data directory path."""

@@ -8,6 +8,7 @@ from .config import get_config
 # Load configuration
 config = get_config()
 
+
 def get_documentation_retriever():
     """
     Initializes and returns a retriever for our ChromaDB.
@@ -19,10 +20,7 @@ def get_documentation_retriever():
     db_path = str(config.get_db_path())
     print(f"Connecting to vector store at: {db_path}")
     # Connect to the existing, persisted database
-    vectorstore = Chroma(
-        persist_directory=db_path,
-        embedding_function=embeddings
-    )
+    vectorstore = Chroma(persist_directory=db_path, embedding_function=embeddings)
 
     print("✅ Retriever is ready.")
 
@@ -33,9 +31,19 @@ def get_documentation_retriever():
 
     # Create a retriever object
     return vectorstore.as_retriever(
-        search_type=config.retriever.search_type,
-        search_kwargs=search_kwargs
+        search_type=config.retriever.search_type, search_kwargs=search_kwargs
     )
+
+
+def query_vector_db(query: str, k: int = None):
+    """
+    Queries the vector database and returns the results.
+    """
+    retriever = get_documentation_retriever()
+    if k is not None:
+        retriever.search_kwargs["k"] = k
+    return retriever.invoke(query)
+
 
 # --- Test Block ---
 if __name__ == "__main__":
@@ -47,17 +55,17 @@ if __name__ == "__main__":
         query = " ".join(sys.argv[1:])
         print("\n--- Testing Retriever ---")
         print(f"Query: '{query}'")
-        
+
         retriever = get_documentation_retriever()
-        
+
         # 'invoke' runs the retriever and gets the docs
         results = retriever.invoke(query)
-        
+
         print(f"\nFound {len(results)} relevant documents:")
         for i, doc in enumerate(results):
-            print(f"\n--- Document {i+1} ---")
+            print(f"\n--- Document {i + 1} ---")
             print(doc.page_content)
             print(f"(Source: {doc.metadata.get('source', 'unknown')})")
             print("------------------")
     else:
-        print("Usage: python retriever.py \"Your test query here\"")
+        print('Usage: python retriever.py "Your test query here"')

@@ -12,9 +12,12 @@ from google.genai import types
 from .config import TomoBaitConfig
 
 # System prompt for config generation
-SYSTEM_PROMPT = """You are a configuration generator for TomoBait, a RAG system for tomography beamline documentation.
+SYSTEM_PROMPT = """
+You are a configuration generator for TomoBait, a RAG system for 
+tomography beamline documentation.
 
-Your task is to generate a valid YAML configuration based on the user's natural language description.
+Your task is to generate a valid YAML configuration based on the user's 
+natural language description.
 
 The configuration structure is:
 ```yaml
@@ -26,14 +29,18 @@ documentation:
 
 retriever:
   db_path: string (ChromaDB storage path)
-  embedding_model: string (HuggingFace model name, default: sentence-transformers/all-MiniLM-L6-v2)
+  embedding_model: string (
+    HuggingFace model name, default: sentence-transformers/all-MiniLM-L6-v2
+  )
   k: integer (number of documents to retrieve, 1-20)
   search_type: string (similarity, mmr, or similarity_score_threshold)
-  score_threshold: float or null (0.0-1.0, only for similarity_score_threshold)
+  score_threshold: float or null (0.0-1.0, for similarity_score_threshold)
 
 llm:
   api_key: string or null (direct API key, for ANL Argo use your ANL username)
-  api_key_env: string or null (environment variable name, e.g., GEMINI_API_KEY, OPENAI_API_KEY)
+  api_key_env: string or null (
+    environment variable name, e.g., GEMINI_API_KEY, OPENAI_API_KEY
+  )
   model: string (model name: gemini-2.5-flash, gpt-4, claude-3-opus, gpt4o, etc.)
   api_type: string (google, openai, azure, anthropic)
   base_url: string or null (custom base URL for OpenAI-compatible APIs like ANL Argo)
@@ -63,9 +70,11 @@ IMPORTANT RULES:
 10. For OpenAI: use api_type="openai", api_key_env="OPENAI_API_KEY"
 11. For Anthropic: use api_type="anthropic", api_key_env="ANTHROPIC_API_KEY"
 12. For Azure: use api_type="azure", api_key_env="AZURE_OPENAI_API_KEY"
-13. For ANL Argo: use api_type="openai", api_key="username", base_url="https://apps-dev.inside.anl.gov/argoapi/v1/"
+13. For ANL Argo: use api_type="openai", api_key="username", 
+    base_url="https://apps-dev.inside.anl.gov/argoapi/v1/"
 
-Example user request: "I want to index local documentation in /data/tomo with high accuracy"
+Example user request: 
+"I want to index local documentation in /data/tomo with high accuracy"
 Expected output:
 ```yaml
 documentation:
@@ -86,7 +95,12 @@ llm:
   api_key_env: GEMINI_API_KEY
   model: gemini-2.5-flash
   api_type: google
-  system_message: 'You are an expert on this project''s documentation. A user will ask a question. Your ''query_documentation'' tool will provide you with the *only* relevant context. **You must answer the user''s question based *only* on that context.** If the context is not sufficient, say so. Do not make up answers.'
+  system_message: 'You are an expert on this project''s documentation. 
+    A user will ask a question. 
+    Your ''query_documentation'' tool will provide you with the *only* 
+    relevant context. **You must answer the user''s question based *only* on 
+    that context.** If the context is not sufficient, say so. 
+    Do not make up answers.'
 
 text_processing:
   chunk_size: 800
@@ -99,7 +113,9 @@ server:
   frontend_port: 8000
 ```
 
-Example user request: "Use OpenAI GPT-4 with fast retrieval from GitHub repo https://github.com/xray-imaging/2bm-docs"
+Example user request: 
+"Use OpenAI GPT-4 with fast retrieval from GitHub repo 
+https://github.com/xray-imaging/2bm-docs"
 Expected output:
 ```yaml
 documentation:
@@ -120,7 +136,12 @@ llm:
   api_key_env: OPENAI_API_KEY
   model: gpt-4
   api_type: openai
-  system_message: 'You are an expert on this project''s documentation. A user will ask a question. Your ''query_documentation'' tool will provide you with the *only* relevant context. **You must answer the user''s question based *only* on that context.** If the context is not sufficient, say so. Do not make up answers.'
+  system_message: 'You are an expert on this project''s documentation. 
+    A user will ask a question. 
+    Your ''query_documentation'' tool will provide you with the *only* 
+    relevant context. **You must answer the user''s question based *only* on 
+    that context.** If the context is not sufficient, say so. 
+    Do not make up answers.'
 
 text_processing:
   chunk_size: 1200
@@ -143,7 +164,8 @@ def generate_config_from_prompt(
 
     Args:
         user_prompt: User's description of their configuration needs
-        api_key: Optional Gemini API key (will use GEMINI_API_KEY env var if not provided)
+        api_key: Optional Gemini API key (will use GEMINI_API_KEY env var if
+            not provided)
 
     Returns:
         Dictionary representing the generated config
@@ -157,13 +179,18 @@ def generate_config_from_prompt(
         api_key = os.getenv("GEMINI_API_KEY")
 
     if not api_key:
-        raise ValueError("Gemini API key not found. Set GEMINI_API_KEY environment variable.")
+        raise ValueError(
+            "Gemini API key not found. Set GEMINI_API_KEY environment variable."
+        )
 
     # Initialize Gemini client
     client = genai.Client(api_key=api_key)
 
     # Prepare the prompt
-    full_prompt = f"{SYSTEM_PROMPT}\n\nUser request: {user_prompt}\n\nGenerate the YAML configuration:"
+    full_prompt = (
+        f"{SYSTEM_PROMPT}\n\nUser request: {user_prompt}\n\n"
+        "Generate the YAML configuration:"
+    )
 
     try:
         # Call Gemini

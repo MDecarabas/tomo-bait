@@ -19,7 +19,7 @@ def main():
         print(f"Model: {status['model']}")
         print(f"API Key Env: {status['api_key_env']}")
         print(f"Available: {status['available']}")
-        if status['error']:
+        if status["error"]:
             print(f"Error: {status['error']}")
         return
 
@@ -28,7 +28,7 @@ def main():
     except LLMNotConfiguredError as e:
         status = get_llm_status()
         print(f"❌ LLM not configured: {e}", file=sys.stderr)
-        env_var = status['api_key_env']
+        env_var = status["api_key_env"]
         print(f"   Set {env_var} or use different provider", file=sys.stderr)
         sys.exit(1)
 
