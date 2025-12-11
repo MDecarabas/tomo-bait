@@ -99,7 +99,7 @@ graph LR
 ### Prerequisites
 
 - Python 3.12
-- [Pixi](https://pixi.sh/) package manager
+- [uv](https://github.com/astral-sh/uv) package manager
 
 ### Installation
 
@@ -109,10 +109,10 @@ git clone <repository-url>
 cd tomo-bait
 ```
 
-2. **Install dependencies**
+2. **Create a virtual environment and install dependencies**
 ```bash
-pixi install
-pixi run install
+uv venv
+uv pip install -e .
 ```
 
 3. **Set up environment variables**
@@ -123,16 +123,16 @@ cp .env.example .env
 
 4. **Ingest documentation** (first time only)
 ```bash
-pixi run ingest
+uv run python -m tomobait.data_ingestion
 ```
 
 5. **Start the application**
 ```bash
 # Terminal 1: Start backend
-pixi run start-backend
+uv run start-backend
 
 # Terminal 2: Start frontend
-pixi run start-frontend
+uv run start-frontend
 ```
 
 6. **Access the UI**
@@ -224,16 +224,16 @@ llm:
 
 ```bash
 # Development
-pixi run start-backend   # Start FastAPI backend (port 8001)
-pixi run start-frontend  # Start Gradio frontend (port 8000)
-pixi run run-cli "query" # Run CLI interface
+uv run start-backend   # Start FastAPI backend
+uv run start-frontend  # Start Gradio frontend
+uv run python -m tomobait.cli "query" # Run CLI interface
 
 # Data Management
-pixi run ingest         # Ingest documentation into vector DB
+uv run python -m tomobait.data_ingestion         # Ingest documentation into vector DB
 
 # Code Quality
-pixi run lint           # Check code style
-pixi run format         # Format code with ruff
+ruff check .           # Check code style
+ruff format .         # Format code with ruff
 ```
 
 ## 🏛️ System Architecture
@@ -317,8 +317,8 @@ See `config.yaml` for the complete list with links.
 ### Development Workflow
 
 1. Make changes
-2. Run `pixi run format` to format code
-3. Run `pixi run lint` to check style
+2. Run `ruff format .` to format code
+3. Run `ruff check .` to check style
 4. Test changes locally
 5. Commit and push
 
@@ -340,7 +340,7 @@ For detailed development guidance, see [CLAUDE.md](CLAUDE.md).
 
 ### Backend won't start
 - Check that `GEMINI_API_KEY` (or your chosen provider's key) is set in `.env`
-- Verify ChromaDB exists: run `pixi run ingest` if needed
+- Verify ChromaDB exists: run `uv run python -m tomobait.data_ingestion` if needed
 
 ### Frontend can't connect
 - Ensure backend is running on port 8001
@@ -349,7 +349,7 @@ For detailed development guidance, see [CLAUDE.md](CLAUDE.md).
 ### No documents retrieved
 - Verify project data directory exists (e.g., `.bait-tomo/`)
 - Check ChromaDB path in config.yaml (defaults to `.bait-tomo/chroma_db`)
-- Re-run ingestion: `pixi run ingest`
+- Re-run ingestion: `uv run python -m tomobait.data_ingestion`
 - Check that embedding model matches between ingestion and retrieval
 
 ## 📞 Support

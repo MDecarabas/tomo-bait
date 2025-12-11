@@ -8,13 +8,13 @@ TomoBait is a RAG (Retrieval-Augmented Generation) system for tomography beamlin
 
 ## Development Environment
 
-This project uses **Pixi** (not pip) for dependency management and task running. All commands should be run through Pixi tasks.
+This project uses **uv** for dependency management and task running.
 
 ### Initial Setup
 
 ```bash
-pixi install  # Install dependencies
-pixi run install  # Install package in editable mode
+uv venv # Creates a virtual environment
+uv pip install -e . # Installs dependencies
 ```
 
 ## Common Commands
@@ -23,30 +23,30 @@ pixi run install  # Install package in editable mode
 
 ```bash
 # Start the FastAPI backend (port 8001)
-pixi run start-backend
+uv run start-backend
 
 # Start the Gradio frontend (port 8000)
-pixi run start-frontend
+uv run start-frontend
 
 # Run CLI interface
-pixi run run-cli "Your question here"
+uv run python -m tomobait.cli "Your question here"
 ```
 
 ### Code Quality
 
 ```bash
 # Check code style
-pixi run lint
+ruff check .
 
 # Format code
-pixi run format
+ruff format .
 ```
 
 ### Data Ingestion
 
 ```bash
 # Ingest documentation (clones repo, builds Sphinx docs, creates vector DB)
-pixi run ingest
+uv run python -m tomobait.data_ingestion
 ```
 
 ## Architecture

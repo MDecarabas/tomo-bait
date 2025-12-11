@@ -874,7 +874,6 @@ with gr.Blocks(theme=gr.themes.Default(primary_hue="blue")) as demo:
                 [],
                 elem_id="chatbot",
                 height=500,
-                type="messages",
             )
 
             with gr.Row():
@@ -1330,9 +1329,12 @@ with gr.Blocks(theme=gr.themes.Default(primary_hue="blue")) as demo:
                 config_status,
             )
 
-if __name__ == "__main__":
+def main():
     demo.launch(
         server_name=config.server.frontend_host,
         server_port=config.server.frontend_port,
         allowed_paths=[DOCS_DIR],  # This is crucial for serving images
     )
+
+if __name__ == "__main__":
+    main()

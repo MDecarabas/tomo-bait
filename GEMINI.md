@@ -4,75 +4,63 @@
 
 This project, `tomo-bait`, is a RAG (Retrieval-Augmented Generation) system designed to answer questions about tomography beamline documentation at the Advanced Photon Source (APS). It uses AI-powered agents to provide answers based on ingested documentation.
 
-The system is composed of:
-
-*   **Project-Based Data Isolation:** Each project is defined in `config.yaml` with a `project.name` (e.g., "tomo"). All data (ChromaDB, conversations, documentation) is stored in `.bait-{name}/` directory.
-*   **FastAPI Backend:** A Python backend that exposes a `/chat` endpoint. It uses `autogen` to manage a conversation between two AI agents:
-    *   A `doc_expert` agent that uses an LLM (Gemini by default) to answer questions based on context.
-    *   A `tool_worker` agent that retrieves relevant documentation using a tool.
-*   **Gradio Frontend:** A modern web interface with four tabs:
-    *   **Chat:** Conversational interface with image rendering support
-    *   **History:** View and resume past conversations
-    *   **Configuration:** Edit all settings with hot-reload
-    *   **Setup:** AI-powered configuration generation
-*   **Command-Line Interface (CLI):** A simple CLI for interacting with the chatbot from the terminal.
-*   **Retriever:** A component that uses `langchain` and a `ChromaDB` vector store to find relevant documents. The embeddings are generated using `sentence-transformers/all-MiniLM-L6-v2`.
-*   **Documentation Sources:** The project can ingest from:
-    *   Git repositories (cloned to `.bait-{name}/documentation/`)
-    *   Local folders with pre-built documentation
-    *   Resource definitions from `config.yaml` (beamlines, software packages, organizations)
+For a comprehensive architectural overview, please refer to the "Project Overview" and "Architecture" sections in [CLAUDE.md](CLAUDE.md).
 
 ## Building and Running
 
-This project uses `pixi` for environment and task management.
-
-**Prerequisites:**
-
-*   `pixi` installed.
-*   An API key for your chosen LLM provider (e.g., `GEMINI_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`) set in `.env` file.
+This project uses `uv` for environment and task management. For detailed steps on initial setup, installation, environment variables, and running the application, please refer to the "Development Environment" and "Common Commands" sections in [CLAUDE.md](CLAUDE.md).
 
 **Key Commands (run from the project root):**
 
 *   **Install dependencies:**
     ```bash
-    pixi install
+    uv venv
+    uv pip install -e .
     ```
 *   **Ingest documentation:**
     *This must be run before starting the application for the first time.*
     ```bash
-    pixi run ingest
+    uv run python -m tomobait.data_ingestion
     ```
 *   **Run the application (backend and frontend):**
     1.  Start the backend:
         ```bash
-        pixi run start-backend
+        uv run start-backend
         ```
         The backend will be available at `http://127.0.0.1:8001`.
     2.  Start the frontend:
         ```bash
-        pixi run start-frontend
+        uv run start-frontend
         ```
         The frontend will be available at `http://127.0.0.1:8000`.
 
 *   **Run the CLI:**
     ```bash
-    pixi run run-cli "Your question here"
+    uv run python -m tomobait.cli "Your question here"
     ```
 
 ## Configuration
 
-TomoBait uses a centralized `config.yaml` file with the following structure:
+TomoBait uses a centralized `config.yaml` file. For a detailed breakdown of configuration sections, please refer to the "Key Configuration" section in [CLAUDE.md](CLAUDE.md).
 
-*   **project:** Define `name` (e.g., "tomo") and `data_dir` (e.g., ".bait-tomo")
-*   **storage:** Conversations directory (defaults to `{data_dir}/conversations`)
-*   **documentation:** Git repos, local folders, and resource definitions
-    *   Resources include beamlines, software packages, organizations, etc.
-*   **retriever:** ChromaDB path (defaults to `{data_dir}/chroma_db`), embedding model, search parameters
-*   **llm:** LLM provider configuration (Gemini, OpenAI, Anthropic, Azure, ANL Argo)
-*   **text_processing:** Chunk size and overlap settings
-*   **server:** Backend and frontend host/port settings
+**Gemini-Specific LLM Configuration:**
 
-All paths can be explicitly set or left null to use computed defaults based on `project.data_dir`.
+When configuring the Language Model (LLM) provider for Gemini, ensure your `config.yaml` includes:
+
+```yaml
+llm:
+  api_key_env: GEMINI_API_KEY
+  model: gemini-2.5-flash # or other supported Gemini models
+  api_type: google
+```
+
+Also, set your `GEMINI_API_KEY` environment variable in your `.env` file:
+
+```
+GEMINI_API_KEY=your_gemini_api_key_here
+```
+
+Get your Gemini API key from: https://aistudio.google.com/app/apikey
 
 ## Directory Structure
 
@@ -85,20 +73,31 @@ When you run the ingestion process, TomoBait creates a project-specific director
 └── documentation/      # Cloned repositories and built Sphinx docs
 ```
 
-This ensures all project data is isolated and easy to manage.
+For more details on the project-based data isolation, refer to [CLAUDE.md](CLAUDE.md).
 
 ## Development Conventions
 
 *   **Linting:** The project uses `ruff` for linting.
     ```bash
-    pixi run lint
+    ruff check .
     ```
 *   **Formatting:** The project uses `ruff` for formatting.
     ```bash
-    pixi run format
+    ruff format .
     ```
 *   **Coding Style:**
     *   Line length: 88 characters
     *   Indent width: 4 spaces
     *   Quote style: double quotes
-*   **Source Code:** All source code is located in the `src` directory.
+
+For further details on code style and development workflow, please refer to [CLAUDE.md](CLAUDE.md).
+
+## Important Implementation Details for Gemini
+
+The backend uses Autogen (AG2) multi-agent framework with Gemini 2.5 Flash as the default LLM. The system employs a two-agent system:
+- `doc_expert` (AssistantAgent): An LLM-powered agent (using Gemini) that answers questions.
+- `tool_worker` (UserProxyAgent): Executes the `query_documentation` tool to retrieve context for the `doc_expert`.
+
+This setup requires the `GEMINI_API_KEY` environment variable to be set.
+
+For more general "Important Implementation Details" that apply across LLM providers, consult [CLAUDE.md](CLAUDE.md).
