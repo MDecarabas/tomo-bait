@@ -152,12 +152,6 @@ class TomoBaitConfig(BaseModel):
         """Get the resolved data directory path."""
         return Path(self.project.data_dir)
 
-    def get_conversations_dir(self) -> Path:
-        """Get the resolved conversations directory path."""
-        if self.storage.conversations_dir:
-            return Path(self.storage.conversations_dir)
-        return self.get_data_dir() / "conversations"
-
     def get_docs_output_dir(self) -> Path:
         """Get the resolved documentation output directory path."""
         if self.documentation.docs_output_dir:
@@ -180,7 +174,6 @@ class TomoBaitConfig(BaseModel):
     def ensure_directories(self) -> None:
         """Create all necessary directories if they don't exist."""
         self.get_data_dir().mkdir(parents=True, exist_ok=True)
-        self.get_conversations_dir().mkdir(parents=True, exist_ok=True)
         self.get_docs_output_dir().mkdir(parents=True, exist_ok=True)
         self.get_db_path().parent.mkdir(parents=True, exist_ok=True)
 
