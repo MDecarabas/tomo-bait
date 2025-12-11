@@ -8,7 +8,7 @@ A RAG (Retrieval-Augmented Generation) system for tomography beamline documentat
 - **AI-Powered Q&A**: Ask questions in natural language and get accurate answers from documentation
 - **Multiple LLM Providers**: Support for Gemini, OpenAI, Anthropic, Azure, and ANL Argo
 - **Hot-Reload Configuration**: Update settings without restarting the application
-- **AI Config Generator**: Generate configurations from natural language descriptions
+
 - **Conversation History**: Save and resume conversations
 - **Web Interface**: Modern Gradio-based UI with chat, history, configuration, and setup tabs
 
@@ -72,7 +72,6 @@ graph LR
         ING[data_ingestion.py<br/>Doc Processor]
         RET[retriever.py<br/>Vector Search]
         CFG[config.py<br/>Config Models]
-        CFGGEN[config_generator.py<br/>AI Config Gen]
         CFGWATCH[config_watcher.py<br/>Hot Reload]
         STORE[storage.py<br/>Conversation DB]
         CLI[cli.py<br/>CLI Interface]
@@ -81,7 +80,6 @@ graph LR
     FRONT -->|HTTP| APP
     APP --> RET
     APP --> CFG
-    APP --> CFGGEN
     APP --> CFGWATCH
     ING --> RET
     ING --> CFG
@@ -289,7 +287,6 @@ sequenceDiagram
   - **Chat**: Conversational interface
   - **History**: View and resume past conversations
   - **Configuration**: Edit all settings with hot-reload
-  - **Setup**: AI-powered config generation
 - Auto-save conversations
 - Image rendering from documentation
 
