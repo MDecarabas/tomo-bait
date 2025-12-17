@@ -165,7 +165,7 @@ retriever:
   search_type:           # similarity, mmr, or similarity_score_threshold
 
 llm:
-  api_key_env:          # Environment variable name for API key
+provider:          # Environment variable name for API key
   model:                # Model name (gemini-2.5-flash, gpt-4, etc.)
   api_type:             # google, openai, azure, anthropic
   system_message:       # System prompt for the agent
@@ -188,7 +188,7 @@ You can switch between LLM providers in the Configuration tab or by editing `con
 **Gemini (Default)**
 ```yaml
 llm:
-  api_key_env: GEMINI_API_KEY
+provider: GEMINI_API_KEY
   model: gemini-2.5-flash
   api_type: google
 ```
@@ -196,7 +196,7 @@ llm:
 **OpenAI**
 ```yaml
 llm:
-  api_key_env: OPENAI_API_KEY
+provider: OPENAI_API_KEY
   model: gpt-4
   api_type: openai
 ```
@@ -204,7 +204,7 @@ llm:
 **Anthropic (Claude)**
 ```yaml
 llm:
-  api_key_env: ANTHROPIC_API_KEY
+provider: ANTHROPIC_API_KEY
   model: claude-3-opus
   api_type: anthropic
 ```

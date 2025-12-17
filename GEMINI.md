@@ -49,7 +49,7 @@ When configuring the Language Model (LLM) provider for Gemini, ensure your `conf
 
 ```yaml
 llm:
-  api_key_env: GEMINI_API_KEY
+provider: GEMINI_API_KEY
   model: gemini-2.5-flash # or other supported Gemini models
   api_type: google
 ```

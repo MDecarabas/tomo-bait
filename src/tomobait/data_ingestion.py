@@ -15,10 +15,10 @@ from langchain_core.documents import Document
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-from .config import get_config
+from .config import BaitConfig
 
 # Load configuration
-config = get_config()
+config = BaitConfig()
 
 
 def ingest_documentation(repo_url: str, documentation_dir: Union[str, Path]):
@@ -89,8 +89,8 @@ def ingest_documentation(repo_url: str, documentation_dir: Union[str, Path]):
         print(e.stderr)
         sys.exit(1)
 
-def load_chunk_embed(HTML_BUILD_DIR: str):
 
+def load_chunk_embed(HTML_BUILD_DIR: str):
     print(f"Loading docs from {HTML_BUILD_DIR}...")
     loader = ReadTheDocsLoader(HTML_BUILD_DIR)
     docs = loader.load()
@@ -104,7 +104,7 @@ def load_chunk_embed(HTML_BUILD_DIR: str):
     # This splitter tries to keep paragraphs/sentences together
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=config.text_processing.chunk_size,
-        chunk_overlap=config.text_processing.chunk_overlap
+        chunk_overlap=config.text_processing.chunk_overlap,
     )
 
     print("Splitting documents into chunks...")
@@ -116,18 +116,17 @@ def load_chunk_embed(HTML_BUILD_DIR: str):
     embeddings = HuggingFaceEmbeddings(model_name=config.retriever.embedding_model)
 
     print("✅ Using local, open-source embeddings!")
-    db_path = str(config.get_db_path())
+    db_path = str(config.db_path)
     print(f"Creating and saving vector store at {db_path}...")
     # This is the magic command.
     # It takes all splits, embeds them, and saves to disk.
-    vectorstore = Chroma.from_documents(
-        documents=splits,
-        embedding=embeddings,
-        persist_directory=db_path
+    Chroma.from_documents(
+        documents=splits, embedding=embeddings, persist_directory=db_path
     )
 
     print("🎉 All done!")
     print(f"Your knowledge base is ready and saved in '{db_path}'.")
+
 
 def create_resource_documents() -> List[Document]:
     """
@@ -170,14 +169,16 @@ def create_resource_documents() -> List[Document]:
             content = f"Beamline: {beamline_id.upper()}\n\n"
             content += dict_to_text(beamline_info)
 
-            documents.append(Document(
-                page_content=content,
-                metadata={
-                    "source": "config_resources",
-                    "category": "beamline",
-                    "beamline_id": beamline_id
-                }
-            ))
+            documents.append(
+                Document(
+                    page_content=content,
+                    metadata={
+                        "source": "config_resources",
+                        "category": "beamline",
+                        "beamline_id": beamline_id,
+                    },
+                )
+            )
 
     # Process organizations
     if "organizations" in resources:
@@ -185,14 +186,16 @@ def create_resource_documents() -> List[Document]:
             content = f"Organization: {org_id.upper()}\n\n"
             content += dict_to_text(org_info)
 
-            documents.append(Document(
-                page_content=content,
-                metadata={
-                    "source": "config_resources",
-                    "category": "organization",
-                    "organization_id": org_id
-                }
-            ))
+            documents.append(
+                Document(
+                    page_content=content,
+                    metadata={
+                        "source": "config_resources",
+                        "category": "organization",
+                        "organization_id": org_id,
+                    },
+                )
+            )
 
     # Process software categories
     if "software" in resources:
@@ -202,15 +205,17 @@ def create_resource_documents() -> List[Document]:
                 content += f"Category: {software_category}\n\n"
                 content += dict_to_text(package_info)
 
-                documents.append(Document(
-                    page_content=content,
-                    metadata={
-                        "source": "config_resources",
-                        "category": "software",
-                        "software_category": software_category,
-                        "package_name": package_name
-                    }
-                ))
+                documents.append(
+                    Document(
+                        page_content=content,
+                        metadata={
+                            "source": "config_resources",
+                            "category": "software",
+                            "software_category": software_category,
+                            "package_name": package_name,
+                        },
+                    )
+                )
 
     # Process python ecosystem
     if "python_ecosystem" in resources:
@@ -221,33 +226,37 @@ def create_resource_documents() -> List[Document]:
                     content += f"Ecosystem Category: {eco_category}\n\n"
                     content += dict_to_text(package)
 
-                    documents.append(Document(
-                        page_content=content,
-                        metadata={
-                            "source": "config_resources",
-                            "category": "python_ecosystem",
-                            "ecosystem_category": eco_category,
-                            "package_name": package.get("name", "Unknown")
-                        }
-                    ))
+                    documents.append(
+                        Document(
+                            page_content=content,
+                            metadata={
+                                "source": "config_resources",
+                                "category": "python_ecosystem",
+                                "ecosystem_category": eco_category,
+                                "package_name": package.get("name", "Unknown"),
+                            },
+                        )
+                    )
 
     # Process community resources
     if "community" in resources:
         for community_category, items in resources["community"].items():
             for item in items:
                 if isinstance(item, dict):
-                    content = f"Community Resource\n"
+                    content = "Community Resource\n"
                     content += f"Category: {community_category}\n\n"
                     content += dict_to_text(item)
 
-                    documents.append(Document(
-                        page_content=content,
-                        metadata={
-                            "source": "config_resources",
-                            "category": "community",
-                            "community_category": community_category
-                        }
-                    ))
+                    documents.append(
+                        Document(
+                            page_content=content,
+                            metadata={
+                                "source": "config_resources",
+                                "category": "community",
+                                "community_category": community_category,
+                            },
+                        )
+                    )
 
     # Process GitHub organizations
     if "github_organizations" in resources:
@@ -256,17 +265,20 @@ def create_resource_documents() -> List[Document]:
                 content = f"GitHub Organization: {org.get('name', 'Unknown')}\n\n"
                 content += dict_to_text(org)
 
-                documents.append(Document(
-                    page_content=content,
-                    metadata={
-                        "source": "config_resources",
-                        "category": "github_organization",
-                        "organization_name": org.get("name", "Unknown")
-                    }
-                ))
+                documents.append(
+                    Document(
+                        page_content=content,
+                        metadata={
+                            "source": "config_resources",
+                            "category": "github_organization",
+                            "organization_name": org.get("name", "Unknown"),
+                        },
+                    )
+                )
 
     print(f"✅ Created {len(documents)} resource documents")
     return documents
+
 
 def embed_resources():
     """
@@ -286,7 +298,7 @@ def embed_resources():
     embeddings = HuggingFaceEmbeddings(model_name=config.retriever.embedding_model)
 
     # Load existing vectorstore or create new one
-    db_path = config.get_db_path()
+    db_path = config.db_path
     db_path_str = str(db_path)
     print(f"Adding resource documents to vector store at {db_path_str}...")
 
@@ -294,29 +306,31 @@ def embed_resources():
     if db_path.exists():
         # Add to existing vectorstore
         vectorstore = Chroma(
-            persist_directory=db_path_str,
-            embedding_function=embeddings
+            persist_directory=db_path_str, embedding_function=embeddings
         )
         vectorstore.add_documents(resource_docs)
-        print(f"✅ Added {len(resource_docs)} resource documents to existing vector store")
+        print(
+            f"✅ Added {len(resource_docs)} resource documents to existing vector store"
+        )
     else:
         # Create new vectorstore with resource docs
-        vectorstore = Chroma.from_documents(
-            documents=resource_docs,
-            embedding=embeddings,
-            persist_directory=db_path_str
+        Chroma.from_documents(
+            documents=resource_docs, embedding=embeddings, persist_directory=db_path_str
         )
-        print(f"✅ Created new vector store with {len(resource_docs)} resource documents")
+        print(
+            f"✅ Created new vector store with {len(resource_docs)} resource documents"
+        )
 
     print("🎉 Resources embedded successfully!")
 
+
 if __name__ == "__main__":
     print("🚀 Starting data ingestion process...")
-    print(f"Configuration loaded from config.yaml")
+    print("Configuration loaded from config.yaml")
     print(f"Project: {config.project.name}")
-    print(f"Data directory: {config.get_data_dir()}")
+    print(f"Data directory: {config.data_dir}")
 
-    docs_output_dir = config.get_docs_output_dir()
+    docs_output_dir = config.docs_output_dir
 
     # Process all git repositories
     for repo_url in config.documentation.git_repos:
@@ -333,12 +347,12 @@ if __name__ == "__main__":
             print(f"⚠️  WARNING: Local folder does not exist: {local_folder}")
 
     # Load, chunk, and embed from the built HTML
-    sphinx_path = config.get_sphinx_build_html_path()
+    sphinx_path = config.sphinx_build_html_path
     if sphinx_path and sphinx_path.exists():
         print(f"\n📚 Loading and embedding documentation from: {sphinx_path}")
         load_chunk_embed(str(sphinx_path))
     else:
-        print(f"⚠️  Sphinx build path not configured or does not exist")
+        print("⚠️  Sphinx build path not configured or does not exist")
 
     # Embed resources from config.yaml
     embed_resources()

@@ -1,14 +1,17 @@
 """
-Centralized configuration management for TomoBait.
+Centralized configuration management for TomoBait, using pydantic-settings.
 """
 
+import shutil
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
 
-import yaml
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
+from pydantic_settings import BaseSettings, SettingsConfigDict, YamlConfigSettingsSource
 
 
+# --- Pydantic Models for Configuration Sections ---
 class ProjectConfig(BaseModel):
     """Configuration for project identity and base directories."""
 
@@ -19,15 +22,6 @@ class ProjectConfig(BaseModel):
     data_dir: str = Field(
         default=".bait-tomo",
         description="Base directory for all project data",
-    )
-
-
-class StorageConfig(BaseModel):
-    """Configuration for conversation and data storage."""
-
-    conversations_dir: Optional[str] = Field(
-        default=None,
-        description="Directory for conversation storage (defaults to {data_dir}/conversations)",
     )
 
 
@@ -43,11 +37,17 @@ class DocumentationSourceConfig(BaseModel):
     )
     docs_output_dir: Optional[str] = Field(
         default=None,
-        description="Directory where documentation will be stored (defaults to {data_dir}/documentation)",
+        description=(
+            "Directory where documentation will be stored "
+            "(defaults to {data_dir}/documentation)"
+        ),
     )
     sphinx_build_html_path: Optional[str] = Field(
         default=None,
-        description="Path to built Sphinx HTML documentation (defaults to {data_dir}/documentation/repos/*/docs/_build/html)",
+        description=(
+            "Path to built Sphinx HTML documentation "
+            "(defaults to {data_dir}/documentation/repos/*/docs/_build/html)"
+        ),
     )
     resources: Optional[Dict] = Field(
         default=None,
@@ -74,21 +74,34 @@ class RetrieverConfig(BaseModel):
         description="Search type: similarity, mmr, or similarity_score_threshold",
     )
     score_threshold: Optional[float] = Field(
-        default=None, description="Minimum relevance score (for similarity_score_threshold)", ge=0.0, le=1.0
+        default=None,
+        description="Minimum relevance score (for similarity_score_threshold)",
+        ge=0.0,
+        le=1.0,
     )
 
 
 class LLMConfig(BaseModel):
     """Configuration for the LLM and agents."""
 
-    api_key_env: str = Field(
+    provider: str = Field(
         default="GEMINI_API_KEY",
         description="Environment variable name containing the API key",
+    )
+    base_url: str = Field(
+        default= "https://apps-dev.inside.anl.gov/argoapi/v1/",
+        description="Base URL for the LLM API (if applicable)"
+    )
+    api_key: str = Field(
+        default="ecodrea",
+        description="api key itself",
     )
     model: str = Field(
         default="gemini-2.5-flash", description="Model name (e.g., gemini-2.5-flash)"
     )
-    api_type: str = Field(default="google", description="API type (google, openai, etc.)")
+    api_type: str = Field(
+        default="google", description="API type (google, openai, etc.)"
+    )
     system_message: str = Field(
         default=(
             "You are an expert on this project's documentation. "
@@ -99,8 +112,6 @@ class LLMConfig(BaseModel):
         ),
         description="System message for the documentation expert agent",
     )
-
-    # ANL Argo specific configuration
     anl_api_url: Optional[str] = Field(
         default=None,
         description="ANL Argo API endpoint URL (only for api_type='anl_argo')",
@@ -135,11 +146,15 @@ class ServerConfig(BaseModel):
     frontend_port: int = Field(default=8000, description="Frontend server port")
 
 
-class TomoBaitConfig(BaseModel):
-    """Main configuration for TomoBait application."""
+class BaitConfig(BaseSettings):
+    """Main configuration for TomoBait, loaded from config.yaml."""
+
+    model_config = SettingsConfigDict(
+        # Ensure the default config.yaml is loaded if it exists
+        yaml_file="config.yaml"
+    )
 
     project: ProjectConfig = Field(default_factory=ProjectConfig)
-    storage: StorageConfig = Field(default_factory=StorageConfig)
     documentation: DocumentationSourceConfig = Field(
         default_factory=DocumentationSourceConfig
     )
@@ -148,155 +163,84 @@ class TomoBaitConfig(BaseModel):
     text_processing: TextProcessingConfig = Field(default_factory=TextProcessingConfig)
     server: ServerConfig = Field(default_factory=ServerConfig)
 
-    def get_data_dir(self) -> Path:
+    def model_post_init(self, __context) -> None:
+        """Create all necessary directories after the model is initialized."""
+        self.data_dir.mkdir(parents=True, exist_ok=True)
+        self.docs_output_dir.mkdir(parents=True, exist_ok=True)
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # --- Computed Path Properties ---
+
+    @computed_field
+    @property
+    def data_dir(self) -> Path:
         """Get the resolved data directory path."""
         return Path(self.project.data_dir)
 
-    def get_docs_output_dir(self) -> Path:
+    @computed_field
+    @property
+    def docs_output_dir(self) -> Path:
         """Get the resolved documentation output directory path."""
         if self.documentation.docs_output_dir:
             return Path(self.documentation.docs_output_dir)
-        return self.get_data_dir() / "documentation"
+        return self.data_dir / "documentation"
 
-    def get_sphinx_build_html_path(self) -> Optional[Path]:
+    @computed_field
+    @property
+    def sphinx_build_html_path(self) -> Optional[Path]:
         """Get the resolved Sphinx build HTML path."""
         if self.documentation.sphinx_build_html_path:
             return Path(self.documentation.sphinx_build_html_path)
         # Return None - let ingestion discover the path
         return None
 
-    def get_db_path(self) -> Path:
+    @computed_field
+    @property
+    def db_path(self) -> Path:
         """Get the resolved ChromaDB path."""
         if self.retriever.db_path:
             return Path(self.retriever.db_path)
-        return self.get_data_dir() / "chroma_db"
+        return self.data_dir / "chroma_db"
 
-    def ensure_directories(self) -> None:
-        """Create all necessary directories if they don't exist."""
-        self.get_data_dir().mkdir(parents=True, exist_ok=True)
-        self.get_docs_output_dir().mkdir(parents=True, exist_ok=True)
-        self.get_db_path().parent.mkdir(parents=True, exist_ok=True)
-
-
-class ConfigManager:
-    """Manager for loading and saving configuration."""
-
-    def __init__(self, config_path: str = "config.yaml"):
-        self.config_path = Path(config_path)
-        self._config: Optional[TomoBaitConfig] = None
-        self._reload_callbacks = []
-
-    def load(self) -> TomoBaitConfig:
-        """Load configuration from YAML file."""
-        if self.config_path.exists():
-            with open(self.config_path, "r") as f:
-                config_dict = yaml.safe_load(f)
-                if config_dict:
-                    self._config = TomoBaitConfig(**config_dict)
-                else:
-                    self._config = TomoBaitConfig()
-        else:
-            # Create default config if file doesn't exist
-            self._config = TomoBaitConfig()
-            self.save(self._config)
-
-        # Ensure all required directories exist
-        self._config.ensure_directories()
-
-        return self._config
-
-    def save(self, config: TomoBaitConfig) -> None:
-        """Save configuration to YAML file."""
-        self._config = config
-        config_dict = config.model_dump()
-
-        with open(self.config_path, "w") as f:
-            yaml.safe_dump(
-                config_dict, f, default_flow_style=False, sort_keys=False, indent=2
-            )
-
-    def backup_config(self) -> str:
-        """
-        Backup current config file with timestamp.
-        Returns the backup file path.
-        """
-        import shutil
-        from datetime import datetime
-
-        if not self.config_path.exists():
-            return ""
-
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        backup_path = self.config_path.parent / f"config.yaml.backup.{timestamp}"
-
-        shutil.copy2(self.config_path, backup_path)
-
-        # Keep only last 5 backups
-        backups = sorted(self.config_path.parent.glob("config.yaml.backup.*"))
-        if len(backups) > 5:
-            for old_backup in backups[:-5]:
-                old_backup.unlink()
-
-        return str(backup_path)
-
-    def get(self) -> TomoBaitConfig:
-        """Get current configuration (load if not already loaded)."""
-        if self._config is None:
-            return self.load()
-        return self._config
-
-    def reload(self) -> TomoBaitConfig:
-        """Reload configuration from file and notify callbacks."""
-        config = self.load()
-
-        # Notify all registered callbacks
-        for callback in self._reload_callbacks:
-            try:
-                callback(config)
-            except Exception as e:
-                print(f"Error in reload callback: {e}")
-
-        return config
-
-    def register_reload_callback(self, callback):
-        """Register a callback to be called when config is reloaded."""
-        self._reload_callbacks.append(callback)
-
-    def unregister_reload_callback(self, callback):
-        """Unregister a reload callback."""
-        if callback in self._reload_callbacks:
-            self._reload_callbacks.remove(callback)
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls,
+        init_settings,
+        env_settings,
+        dotenv_settings,
+        file_secret_settings,
+    ):
+        """Define the source loading priority, using YAML as the primary source."""
+        return (
+            init_settings,
+            YamlConfigSettingsSource(settings_cls),
+            env_settings,
+            dotenv_settings,
+            file_secret_settings,
+        )
 
 
-# Global config manager instance
-_config_manager = ConfigManager()
+# --- Standalone Utility Functions ---
 
 
-def get_config() -> TomoBaitConfig:
-    """Get the current configuration."""
-    return _config_manager.get()
+def backup_config(path: str = "config.yaml") -> str:
+    """
+    Backup current config file with a timestamp.
+    Returns the backup file path.
+    """
+    config_path = Path(path)
+    if not config_path.exists():
+        return ""
 
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup_path = config_path.parent / f"{config_path.name}.backup.{timestamp}"
+    shutil.copy2(config_path, backup_path)
 
-def save_config(config: TomoBaitConfig) -> None:
-    """Save the configuration."""
-    _config_manager.save(config)
+    # Keep only the last 5 backups
+    backups = sorted(config_path.parent.glob(f"{config_path.name}.backup.*"))
+    if len(backups) > 5:
+        for old_backup in backups[:-5]:
+            old_backup.unlink()
 
-
-def reload_config() -> TomoBaitConfig:
-    """Reload configuration from file."""
-    return _config_manager.reload()
-
-
-def backup_config() -> str:
-    """Backup current config file."""
-    return _config_manager.backup_config()
-
-
-def register_reload_callback(callback):
-    """Register a callback for config reload events."""
-    _config_manager.register_reload_callback(callback)
-
-
-def get_config_manager() -> ConfigManager:
-    """Get the global config manager instance."""
-    return _config_manager
+    return str(backup_path)

@@ -5,13 +5,13 @@ import autogen
 from autogen import LLMConfig
 from dotenv import load_dotenv
 
-from .config import get_config
+from .config import BaitConfig
 from .retriever import get_documentation_retriever
 
 load_dotenv()
 
 # Load configuration
-config = get_config()
+config = BaitConfig()
 
 # --- 1. Interchangeable LLM Config ---
 query_documentation_tool_dict = {
@@ -24,38 +24,35 @@ query_documentation_tool_dict = {
             "properties": {
                 "query": {
                     "type": "string",
-                    "description": "The search query for the documentation"
+                    "description": "The search query for the documentation",
                 }
             },
-            "required": ["query"]
-        }
-    }
+            "required": ["query"],
+        },
+    },
 }
 
 # Handle different LLM providers
-if config.llm.api_type == "anl_argo":
+if config.llm.provider == "anl_argo":
     # ANL Argo doesn't use API keys, but requires URL, user, and model
-    if not config.llm.anl_api_url or not config.llm.anl_user:
-        print("❌ ERROR: ANL Argo requires anl_api_url and anl_user in config.yaml")
-        exit()
 
-    from .anl_llm import create_anl_llm_config
+        # Build LLM config
+        llm_config_dict = {
+            "api_type": config.llm.api_type,
+            "model": config.llm.model,
+            "api_key": config.llm.api_key,
+            "tools": [query_documentation_tool_dict],
+        }
 
-    llm_config = LLMConfig(
-        config_list=[
-            create_anl_llm_config(
-                api_url=config.llm.anl_api_url,
-                user=config.llm.anl_user,
-                model=config.llm.anl_model or config.llm.model,
-                temperature=0.1,
-            )
-        ]
-    )
+        llm_config_dict["base_url"] = config.llm.base_url
+
+        llm_config = LLMConfig(config_list=[llm_config_dict])
+
 else:
     # Standard API key-based providers (Gemini, OpenAI, Anthropic, Azure)
-    api_key = os.getenv(config.llm.api_key_env)
+    api_key = os.getenv(config.llm.provider)
     if not api_key:
-        print(f"❌ ERROR: {config.llm.api_key_env} environment variable not set.")
+        print(f"❌ ERROR: {config.llm.provider} environment variable not set.")
         exit()
 
     llm_config = LLMConfig(
@@ -75,9 +72,7 @@ retriever = get_documentation_retriever()
 
 # --- 3. Define Agents ---
 technician_agent = autogen.AssistantAgent(
-    "doc_expert",
-    llm_config=llm_config,
-    system_message=config.llm.system_message
+    "doc_expert", llm_config=llm_config, system_message=config.llm.system_message
 )
 
 worker_agent = autogen.UserProxyAgent(
@@ -90,9 +85,10 @@ worker_agent = autogen.UserProxyAgent(
     code_execution_config=False,
 )
 
+
 @worker_agent.register_for_execution(name="query_documentation")
 def query_documentation(
-    query: Annotated[str, "The search query for the documentation"]
+    query: Annotated[str, "The search query for the documentation"],
 ) -> str:
     """
     A tool that takes a user's query, retrieves relevant
@@ -111,19 +107,27 @@ def query_documentation(
         sources = []
 
         # Add file source if available
-        if 'source' in doc.metadata:
-            source_path = doc.metadata['source']
+        if "source" in doc.metadata:
+            source_path = doc.metadata["source"]
             # Only show source path for non-config resources
-            if 'config_resources' not in str(source_path):
+            if "config_resources" not in str(source_path):
                 sources.append(f"Source: {source_path}")
 
         # Add relevant URLs from metadata (prioritize web-accessible links)
-        url_fields = ['documentation', 'docs', 'official_page', 'website', 'github', 'pypi', 'url']
+        url_fields = [
+            "documentation",
+            "docs",
+            "official_page",
+            "website",
+            "github",
+            "pypi",
+            "url",
+        ]
         for field in url_fields:
             if field in doc.metadata and doc.metadata[field]:
                 url = doc.metadata[field]
                 # Format the field name nicely
-                field_name = field.replace('_', ' ').title()
+                field_name = field.replace("_", " ").title()
                 sources.append(f"{field_name}: {url}")
 
         # Combine content with source information
@@ -139,6 +143,7 @@ def query_documentation(
     print(f"--- TOOL: Found {len(results)} chunks. ---")
     return context_str
 
+
 def run_agent_chat(user_question: str) -> str:
     """
     Initializes and runs a chat between agents to answer a user's question.
@@ -148,10 +153,13 @@ def run_agent_chat(user_question: str) -> str:
         recipient=technician_agent,
         message=(
             f"Please answer this question: '{user_question}'. "
-            "You *must* use the 'query_documentation' tool to find the relevant context first. "
+            "You *must* use the 'query_documentation' tool to find the "
+            "relevant context first. "
             "Provide a concise but complete answer (2-3 paragraphs). "
-            "If the question asks 'how to' do something, provide step-by-step instructions as a numbered list. "
-            "Include relevant source links from the context at the end of your response."
+            "If the question asks 'how to' do something, provide step-by-step "
+            "instructions as a numbered list. "
+            "Include relevant source links from the context at the end of "
+            "your response."
         ),
     )
 

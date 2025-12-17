@@ -1,16 +1,19 @@
 import os
 import re
-from pathlib import Path
 
 import gradio as gr
 import requests
 
-from .config import get_config, save_config
+from .config import BaitConfig
 
 # Load configuration
-config = get_config()
+config = BaitConfig()
 BACKEND_URL = f"http://{config.server.backend_host}:{config.server.backend_port}/chat"
-DOCS_DIR = os.path.abspath(config.documentation.sphinx_build_html_path)
+DOCS_DIR = (
+    os.path.abspath(config.sphinx_build_html_path)
+    if config.sphinx_build_html_path and os.path.exists(config.sphinx_build_html_path)
+    else None
+)
 
 # Global state for current conversation
 current_conversation_id = None
@@ -22,6 +25,10 @@ def format_response(text):
     display in the Gradio interface. It converts image paths to local URLs
     that Gradio can serve.
     """
+    # If we don't have a docs directory, we can't serve images.
+    if not DOCS_DIR:
+        return [(text, None)]
+
     # Find all image paths (markdown or raw)
     image_paths = re.findall(
         r"!\[.*?\]\((.*?)\)|([\w\-/.]+\.(?:png|jpg|jpeg|gif|svg))", text
@@ -95,7 +102,9 @@ def chat_func(message, history):
 
     except requests.exceptions.RequestException as e:
         history.append({"role": "user", "content": message})
-        history.append({"role": "assistant", "content": f"Error connecting to backend: {e}"})
+        history.append(
+            {"role": "assistant", "content": f"Error connecting to backend: {e}"}
+        )
         return history
 
 
@@ -143,11 +152,13 @@ with gr.Blocks(theme=gr.themes.Default(primary_hue="blue")) as demo:
 
 
 def main():
+    allowed_paths = [DOCS_DIR] if DOCS_DIR else []
     demo.launch(
         server_name=config.server.frontend_host,
         server_port=config.server.frontend_port,
-        allowed_paths=[DOCS_DIR],  # This is crucial for serving images
+        allowed_paths=allowed_paths,  # This is crucial for serving images
     )
+
 
 if __name__ == "__main__":
     main()
